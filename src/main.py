@@ -71,7 +71,7 @@ class SiKIdleApp(App):
 
 			# Crear contenedor principal con menú lateral
 			from ui.screen_manager import SiKIdleMainContainer
-			self.main_container = SiKIdleMainContainer()
+			self.main_container = SiKIdleMainContainer(game_state=self.game_state)
 			self.screen_manager = self.main_container.get_screen_manager()
 
 			# Crear y agregar todas las pantallas

@@ -1,570 +1,369 @@
-"""Pantalla de mejoras para SiKIdle.
+"""
+Pantalla de gestión de mejoras para el juego SiKIdle.
 
-Permite al jugador comprar mejoras que aumentan su
-eficiencia de clicks y generación de monedas.
+Esta pantalla permite a los jugadores:
+- Ver todas las mejoras disponibles organizadas por categoría
+- Comprar mejoras permanentes para incrementar eficiencia
+- Ver efectos acumulados de las mejoras
+- Gestionar el progreso de especialización
 """
 
 import logging
 from typing import Any
-
+from kivy.uix.gridlayout import GridLayout  # type: ignore
+from kivy.uix.tabbedpanel import TabbedPanel, TabbedPanelItem  # type: ignore
 from kivy.clock import Clock  # type: ignore
 from kivy.uix.boxlayout import BoxLayout  # type: ignore
-from kivy.uix.button import Button  # type: ignore
 from kivy.uix.label import Label  # type: ignore
+from kivy.uix.button import Button  # type: ignore
 from kivy.uix.scrollview import ScrollView  # type: ignore
 
-from core.game import get_game_state
+from core.game import get_game_state, GameState
+from core.upgrades import UpgradeType, UpgradeCategory, UpgradeInfo
 from ui.screen_manager import SiKIdleScreen
-from utils.save import get_save_manager
+
+
+class UpgradeButton(Button):
+	"""Botón personalizado para representar una mejora."""
+	
+	def __init__(self, upgrade_type: UpgradeType, upgrade_info: UpgradeInfo, game_state: GameState, **kwargs: Any):
+		super().__init__(**kwargs)
+		self.upgrade_type = upgrade_type
+		self.upgrade_info = upgrade_info
+		self.game_state = game_state
+		self.update_display()
+		
+	def update_display(self):
+		"""Actualiza la información mostrada de la mejora."""
+		upgrade = self.game_state.upgrade_manager.get_upgrade(self.upgrade_type)
+		cost = upgrade.get_current_cost(self.upgrade_info)
+		
+		# Verificar si se puede permitir
+		can_afford = True
+		if cost != float('inf'):
+			if self.game_state.resource_manager.get_resource(self.upgrade_info.cost_resource) < cost:
+				can_afford = False
+		else:
+			can_afford = False
+		
+		# Configurar texto del botón
+		if cost == float('inf'):
+			cost_text = "MAX"
+		else:
+			cost_text = f"{cost:,.0f}"
+		
+		total_effect = upgrade.get_total_effect(self.upgrade_info)
+		effect_text = f"+{total_effect * 100:.1f}%" if self.upgrade_info.upgrade_type.value.endswith(('income', 'chance', 'reduction')) else f"+{total_effect:.1f}x"
+		
+		self.text = (f"{self.upgrade_info.emoji} {self.upgrade_info.name}\n"
+					f"Nivel: {upgrade.level}/{self.upgrade_info.max_level if self.upgrade_info.max_level > 0 else '∞'}\n"
+					f"Efecto: {effect_text}\n"
+					f"Costo: {cost_text}")
+		
+		# Configurar colores
+		if can_afford and cost != float('inf'):
+			self.background_color = [0.2, 0.8, 0.2, 1]  # Verde si se puede permitir
+		elif cost == float('inf'):
+			self.background_color = [0.8, 0.8, 0.2, 1]  # Amarillo si está al máximo
+		else:
+			self.background_color = [0.8, 0.2, 0.2, 1]  # Rojo si no se puede permitir
+			
+		# Desactivar si no se puede permitir
+		self.disabled = not can_afford or cost == float('inf')
 
 
 class UpgradesScreen(SiKIdleScreen):
-	"""Pantalla de mejoras del juego."""
-
+	"""Pantalla principal de gestión de mejoras."""
+	
 	def __init__(self, **kwargs: Any):
-		"""Inicializa la pantalla de mejoras."""
 		super().__init__(**kwargs)
-
-		self.save_manager = get_save_manager()
 		self.game_state = get_game_state()
-
-		# Referencias a elementos UI para actualización
-		self.upgrade_buttons: dict[str, Button] = {}
-		self.upgrade_labels: dict[str, Label] = {}
-		self.coins_label = None
-
-		# Definir mejoras disponibles
-		self.upgrades = self.define_upgrades()
-
+		self.upgrade_buttons: dict[UpgradeType, UpgradeButton] = {}
+		self.stats_labels: dict[str, Label] = {}
+		self.update_event = None
+		
 		self.build_ui()
-
-		# Programar actualización de UI
-		self.update_event = Clock.schedule_interval(self.update_ui, 1.0)
-
-	def define_upgrades(self) -> dict[str, dict]:
-		"""Define las mejoras disponibles en el juego.
 		
-		Returns:
-			Diccionario con definiciones de mejoras
-		"""
-		return {
-			'cursor': {
-				'name': '👆 Cursor Mejorado',
-				'description': 'Aumenta las monedas por click',
-				'base_cost': 15,
-				'cost_multiplier': 1.15,
-				'base_effect': 1,
-				'effect_multiplier': 1.0,
-				'max_level': 100,
-				'category': 'click'
-			},
-			'auto_clicker': {
-				'name': '🤖 Auto-Clicker',
-				'description': 'Genera clicks automáticos',
-				'base_cost': 100,
-				'cost_multiplier': 1.20,
-				'base_effect': 1,
-				'effect_multiplier': 1.1,
-				'max_level': 50,
-				'category': 'auto'
-			},
-			'multiplier': {
-				'name': '✨ Multiplicador',
-				'description': 'Multiplica todas las ganancias',
-				'base_cost': 500,
-				'cost_multiplier': 1.50,
-				'base_effect': 0.1,
-				'effect_multiplier': 1.0,
-				'max_level': 25,
-				'category': 'multiplier'
-			},
-			'efficiency': {
-				'name': '⚡ Eficiencia',
-				'description': 'Reduce costos de otras mejoras',
-				'base_cost': 250,
-				'cost_multiplier': 1.30,
-				'base_effect': 0.02,
-				'effect_multiplier': 1.0,
-				'max_level': 20,
-				'category': 'utility'
-			},
-			'prestige': {
-				'name': '👑 Prestigio',
-				'description': 'Bonificación permanente post-reinicio',
-				'base_cost': 10000,
-				'cost_multiplier': 2.0,
-				'base_effect': 0.05,
-				'effect_multiplier': 1.0,
-				'max_level': 10,
-				'category': 'prestige'
-			},
-			'luck': {
-				'name': '🍀 Suerte',
-				'description': 'Probabilidad de clicks críticos',
-				'base_cost': 750,
-				'cost_multiplier': 1.35,
-				'base_effect': 0.01,
-				'effect_multiplier': 1.0,
-				'max_level': 30,
-				'category': 'special'
-			}
-		}
-
 	def build_ui(self):
-		"""Construye la interfaz de la pantalla de mejoras."""
+		"""Construye la interfaz de usuario de la pantalla de mejoras."""
 		# Layout principal
-		main_layout = BoxLayout(
-			orientation='vertical',
-			padding=[30, 40, 30, 30],
-			spacing=25
-		)
-
-		# Header con título, monedas y botón volver
-		header = self.build_header()
-		main_layout.add_widget(header)
-
-		# Área de mejoras con scroll
-		scroll = ScrollView(
-			size_hint=(1, 0.85)
-		)
-
-		upgrades_layout = BoxLayout(
-			orientation='vertical',
-			spacing=15,
-			size_hint_y=None
-		)
-		upgrades_layout.bind(minimum_height=upgrades_layout.setter('height'))
-
-		# Crear mejoras por categoría
-		self.create_upgrades_by_category(upgrades_layout)
-
-		scroll.add_widget(upgrades_layout)
-		main_layout.add_widget(scroll)
-
-		self.add_widget(main_layout)
-
-		logging.info("Pantalla de mejoras construida")
-
-	def build_header(self) -> BoxLayout:
-		"""Construye el header de la pantalla.
+		main_layout = BoxLayout(orientation='vertical', padding=[10, 10, 10, 10], spacing=10)
 		
-		Returns:
-			BoxLayout con el header
-		"""
-		header = BoxLayout(
-			orientation='vertical',
-			size_hint=(1, 0.15),
-			spacing=10
-		)
-
-		# Fila superior: botón volver y título
-		top_row = BoxLayout(
-			orientation='horizontal',
-			size_hint=(1, 0.6),
-			spacing=10
-		)
-
-		back_button = Button(
-			text='← Volver',
-			font_size='16sp',
-			size_hint=(0.25, 1),
-			background_color=[0.6, 0.6, 0.6, 1]
-		)
-		back_button.bind(on_press=self.on_back_button)
-		top_row.add_widget(back_button)
-
+		# Header con título y botón de cerrar
+		header_layout = BoxLayout(orientation='horizontal', size_hint_y=None, height=60)
+		
 		title_label = Label(
-			text='🛠️ Mejoras',
-			font_size='28sp',
-			size_hint=(0.75, 1),
-			bold=True,
-			color=[0.8, 0.8, 1, 1]
-		)
-		top_row.add_widget(title_label)
-
-		header.add_widget(top_row)
-
-		# Fila inferior: monedas disponibles
-		coins_row = BoxLayout(
-			orientation='horizontal',
-			size_hint=(1, 0.4)
-		)
-
-		coins_icon = Label(
-			text='💰',
+			text="🏗️ GESTIÓN PRINCIPAL",
 			font_size='24sp',
-			size_hint=(0.15, 1)
-		)
-		coins_row.add_widget(coins_icon)
-
-		self.coins_label = Label(
-			text=f'{self.game_state.coins:,} monedas',
-			font_size='20sp',
-			size_hint=(0.85, 1),
-			color=[1, 1, 0.6, 1],
 			bold=True,
-			halign='left',
-			valign='center'
+			size_hint_x=0.8,
+			color=[1, 1, 1, 1]
 		)
-		self.coins_label.text_size = (None, None)
-		coins_row.add_widget(self.coins_label)
-
-		header.add_widget(coins_row)
-
-		return header
-
-	def create_upgrades_by_category(self, parent: BoxLayout):
-		"""Crea las mejoras organizadas por categoría.
 		
-		Args:
-			parent: Layout padre donde agregar las mejoras
-		"""
-		categories = {
-			'click': '👆 Mejoras de Click',
-			'auto': '🤖 Automatización',
-			'multiplier': '✨ Multiplicadores',
-			'utility': '⚡ Utilidades',
-			'special': '🍀 Especiales',
-			'prestige': '👑 Prestigio'
-		}
-
-		for category_key, category_name in categories.items():
-			# Obtener mejoras de esta categoría
-			category_upgrades = [
-				(upgrade_id, upgrade_data)
-				for upgrade_id, upgrade_data in self.upgrades.items()
-				if upgrade_data['category'] == category_key
-			]
-
-			if not category_upgrades:
-				continue
-
-			# Crear sección de categoría
-			category_section = self.create_category_section(category_name, category_upgrades)
-			parent.add_widget(category_section)
-
-	def create_category_section(self, title: str, upgrades: list[tuple[str, dict]]) -> BoxLayout:
-		"""Crea una sección de categoría de mejoras.
+		close_button = Button(
+			text="❌ Cerrar",
+			size_hint_x=0.2,
+			background_color=[0.8, 0.2, 0.2, 1]
+		)
+		close_button.bind(on_press=self.on_close_button)
 		
-		Args:
-			title: Título de la categoría
-			upgrades: Lista de mejoras en la categoría
-			
-		Returns:
-			BoxLayout con la sección de categoría
-		"""
-		section = BoxLayout(
-			orientation='vertical',
-			size_hint=(1, None),
+		header_layout.add_widget(title_label)
+		header_layout.add_widget(close_button)
+		
+		# Panel de estadísticas globales
+		stats_layout = BoxLayout(
+			orientation='horizontal',
+			size_hint_y=None,
+			height=60,
 			spacing=10
 		)
-
-		# Título de la categoría
-		title_label = Label(
-			text=title,
-			font_size='20sp',
-			size_hint=(1, None),
-			height='35dp',
-			bold=True,
-			color=[0.9, 0.9, 1, 1],
-			halign='left',
-			valign='center'
-		)
-		title_label.text_size = (400, None)
-		section.add_widget(title_label)
-
-		# Mejoras individuales
-		for upgrade_id, upgrade_data in upgrades:
-			upgrade_widget = self.create_upgrade_widget(upgrade_id, upgrade_data)
-			section.add_widget(upgrade_widget)
-
-		# Separador
-		separator = Label(
-			text='─' * 40,
-			font_size='14sp',
-			size_hint=(1, None),
-			height='15dp',
-			color=[0.4, 0.4, 0.4, 1]
-		)
-		section.add_widget(separator)
-
-		# Calcular altura total
-		total_height = 35 + (len(upgrades) * 100) + 15 + (len(upgrades) * 10)
-		section.height = total_height
-
-		return section
-
-	def create_upgrade_widget(self, upgrade_id: str, upgrade_data: dict) -> BoxLayout:
-		"""Crea el widget para una mejora individual.
 		
-		Args:
-			upgrade_id: ID de la mejora
-			upgrade_data: Datos de la mejora
+		self.stats_labels['click_multiplier'] = Label(
+			text="Multiplicador Clic: 1.0x",
+			size_hint_x=0.33
+		)
+		self.stats_labels['building_multiplier'] = Label(
+			text="Multiplicador Edificios: 1.0x",
+			size_hint_x=0.33
+		)
+		self.stats_labels['total_spent'] = Label(
+			text="💰 Gastado: 0",
+			size_hint_x=0.34
+		)
+		
+		for label in self.stats_labels.values():
+			stats_layout.add_widget(label)
+		
+		# Crear panel con pestañas para categorías + edificios
+		tab_panel = TabbedPanel(do_default_tab=False, tab_width=120)
+		
+		# Pestaña de edificios (primera pestaña)
+		buildings_tab = TabbedPanelItem(text="🏗️ Edificios")
+		buildings_content = self._create_buildings_content()
+		buildings_tab.add_widget(buildings_content)
+		tab_panel.add_widget(buildings_tab)
+		
+		# Crear pestañas para cada categoría de mejoras
+		for category in UpgradeCategory:
+			tab_item = TabbedPanelItem(text=self._get_category_display_name(category))
+			tab_content = self._create_category_content(category)
+			tab_item.add_widget(tab_content)
+			tab_panel.add_widget(tab_item)
+		
+		# Ensamblar layout principal
+		main_layout.add_widget(header_layout)
+		main_layout.add_widget(stats_layout)
+		main_layout.add_widget(tab_panel)
+		
+		self.add_widget(main_layout)
+	
+	def _create_buildings_content(self):
+		"""Crea el contenido para la pestaña de edificios."""
+		# Crear scroll view para los edificios
+		scroll = ScrollView()
+		buildings_layout = GridLayout(
+			cols=1,
+			spacing=10,
+			size_hint_y=None,
+			padding=[10, 10, 10, 10]
+		)
+		buildings_layout.bind(minimum_height=buildings_layout.setter('height'))
+		
+		# Obtener edificios disponibles
+		from core.buildings import BuildingType
+		for building_type in BuildingType:
+			building_info = self.game_state.building_manager.get_building_info(building_type)
+			building = self.game_state.building_manager.get_building(building_type)
 			
-		Returns:
-			BoxLayout con el widget de mejora
-		"""
-		# Obtener nivel actual
-		current_level = self.save_manager.get_upgrade_level(upgrade_id)
-		cost = self.calculate_cost(upgrade_id, current_level)
-		can_afford = self.game_state.coins >= cost
-		max_level_reached = current_level >= upgrade_data['max_level']
-
-		# Widget principal
+			# Crear widget para el edificio
+			building_widget = self._create_building_widget(building_type, building_info, building)
+			buildings_layout.add_widget(building_widget)
+		
+		scroll.add_widget(buildings_layout)
+		return scroll
+	
+	def _create_building_widget(self, building_type, building_info, building):
+		"""Crea el widget para un edificio individual."""
+		# Widget principal del edificio
 		widget = BoxLayout(
 			orientation='horizontal',
-			size_hint=(1, None),
-			height='90dp',
-			spacing=10
+			size_hint_y=None,
+			height=100,
+			spacing=10,
+			padding=[5, 5, 5, 5]
 		)
-
-		# Información de la mejora (lado izquierdo)
+		
+		# Información del edificio (lado izquierdo)
 		info_layout = BoxLayout(
 			orientation='vertical',
-			size_hint=(0.7, 1),
-			spacing=2
+			size_hint_x=0.7
 		)
-
-		# Nombre y nivel
+		
+		# Nombre y cantidad
 		name_label = Label(
-			text=f"{upgrade_data['name']} (Nv. {current_level})",
+			text=f"{building_info.emoji} {building_info.name} ({building.count})",
 			font_size='18sp',
-			size_hint=(1, 0.4),
 			bold=True,
-			color=[0.9, 0.9, 0.9, 1],
+			size_hint_y=0.4,
 			halign='left',
 			valign='center'
 		)
-		name_label.text_size = (300, None)
+		name_label.text_size = (None, None)
 		info_layout.add_widget(name_label)
-
+		
 		# Descripción
 		desc_label = Label(
-			text=upgrade_data['description'],
+			text=building_info.description,
 			font_size='14sp',
-			size_hint=(1, 0.3),
 			color=[0.7, 0.7, 0.7, 1],
+			size_hint_y=0.3,
 			halign='left',
 			valign='center'
 		)
-		desc_label.text_size = (300, None)
+		desc_label.text_size = (None, None)
 		info_layout.add_widget(desc_label)
-
-		# Efecto actual
-		effect_text = self.get_effect_text(upgrade_id, current_level)
-		effect_label = Label(
-			text=f"Efecto: {effect_text}",
+		
+		# Producción
+		production_label = Label(
+			text=f"Produce: {building_info.base_production} monedas/seg",
 			font_size='14sp',
-			size_hint=(1, 0.3),
 			color=[0.6, 1, 0.6, 1],
+			size_hint_y=0.3,
 			halign='left',
 			valign='center'
 		)
-		effect_label.text_size = (300, None)
-		info_layout.add_widget(effect_label)
-
+		production_label.text_size = (None, None)
+		info_layout.add_widget(production_label)
+		
 		widget.add_widget(info_layout)
-
+		
 		# Botón de compra (lado derecho)
-		button_layout = BoxLayout(
-			orientation='vertical',
-			size_hint=(0.3, 1),
-			spacing=5
+		cost = building.get_current_cost(building_info)
+		can_afford = self.game_state.resource_manager.get_resource(building_info.cost_resource) >= cost
+		
+		buy_button = Button(
+			text=f"💰 {cost:,.0f}\nComprar",
+			font_size='16sp',
+			size_hint_x=0.3,
+			background_color=[0.2, 0.8, 0.2, 1] if can_afford else [0.8, 0.2, 0.2, 1]
 		)
-
-		if max_level_reached:
-			buy_button = Button(
-				text='MAX',
-				font_size='16sp',
-				size_hint=(1, 0.6),
-				background_color=[0.4, 0.4, 0.4, 1]
-			)
-			buy_button.disabled = True
-		else:
-			buy_button = Button(
-				text=f'💰 {cost:,}',
-				font_size='16sp',
-				size_hint=(1, 0.6),
-				background_color=[0.2, 0.8, 0.2, 1] if can_afford else [0.6, 0.2, 0.2, 1]
-			)
-			buy_button.bind(on_press=lambda x: self.buy_upgrade(upgrade_id))
-			buy_button.disabled = not can_afford
-
-		button_layout.add_widget(buy_button)
-
-		# Label con próximo nivel
-		if not max_level_reached:
-			next_effect = self.get_effect_text(upgrade_id, current_level + 1)
-			next_label = Label(
-				text=f'→ {next_effect}',
-				font_size='12sp',
-				size_hint=(1, 0.4),
-				color=[0.8, 0.8, 1, 1],
-				halign='center',
-				valign='center'
-			)
-			next_label.text_size = (100, None)
-			button_layout.add_widget(next_label)
-		else:
-			spacer = Label(size_hint=(1, 0.4))
-			button_layout.add_widget(spacer)
-
-		widget.add_widget(button_layout)
-
-		# Guardar referencias
-		self.upgrade_buttons[upgrade_id] = buy_button
-		self.upgrade_labels[upgrade_id] = name_label
-
+		buy_button.disabled = not can_afford
+		buy_button.bind(on_press=lambda x: self.on_building_button(building_type))
+		
+		widget.add_widget(buy_button)
+		
 		return widget
-
-	def calculate_cost(self, upgrade_id: str, level: int) -> int:
-		"""Calcula el costo de una mejora en un nivel específico.
-		
-		Args:
-			upgrade_id: ID de la mejora
-			level: Nivel para el cual calcular el costo
-			
-		Returns:
-			Costo de la mejora
-		"""
-		upgrade_data = self.upgrades[upgrade_id]
-		base_cost = upgrade_data['base_cost']
-		multiplier = upgrade_data['cost_multiplier']
-
-		# Aplicar descuento por eficiencia
-		efficiency_level = self.save_manager.get_upgrade_level('efficiency')
-		efficiency_discount = 1.0 - (efficiency_level * 0.02)
-
-		cost = int(base_cost * (multiplier ** level) * efficiency_discount)
-		return max(cost, 1)  # Mínimo 1 moneda
-
-	def get_effect_text(self, upgrade_id: str, level: int) -> str:
-		"""Obtiene el texto del efecto de una mejora en un nivel.
-		
-		Args:
-			upgrade_id: ID de la mejora
-			level: Nivel de la mejora
-			
-		Returns:
-			Texto describiendo el efecto
-		"""
-		if level == 0:
-			return "Sin efecto"
-
-		upgrade_data = self.upgrades[upgrade_id]
-		base_effect = upgrade_data['base_effect']
-		multiplier = upgrade_data['effect_multiplier']
-
-		effect_value = base_effect * (multiplier ** (level - 1)) * level
-
-		effect_mapping = {
-			'cursor': f"+{effect_value:.0f} monedas/click",
-			'auto_clicker': f"{effect_value:.1f} clicks/seg",
-			'multiplier': f"x{1 + effect_value:.1f} ganancias",
-			'efficiency': f"-{effect_value*100:.0f}% costos",
-			'prestige': f"+{effect_value*100:.1f}% permanente",
-			'luck': f"{effect_value*100:.1f}% crítico"
-		}
-
-		return effect_mapping.get(upgrade_id, f"{effect_value:.2f}")
-
-	def buy_upgrade(self, upgrade_id: str):
-		"""Compra una mejora.
-		
-		Args:
-			upgrade_id: ID de la mejora a comprar
-		"""
-		current_level = self.save_manager.get_upgrade_level(upgrade_id)
-		cost = self.calculate_cost(upgrade_id, current_level)
-		upgrade_data = self.upgrades[upgrade_id]
-
-		# Verificar si se puede comprar
-		if (self.game_state.coins >= cost and
-			current_level < upgrade_data['max_level']):
-
-			# Realizar compra
-			self.game_state.spend_coins(cost)
-			self.save_manager.set_upgrade_level(upgrade_id, current_level + 1)
-
-			# Actualizar estadísticas
-			self.save_manager.increment_stat('upgrades_bought', 1)
-			self.save_manager.increment_stat('total_coins_spent', cost)
-
-			# Aplicar efecto inmediatamente
-			self.apply_upgrade_effect(upgrade_id, current_level + 1)
-
-			logging.info(f"Mejora comprada: {upgrade_id} nivel {current_level + 1}")
-
-			# Actualizar UI inmediatamente
-			self.update_ui()
-
-	def apply_upgrade_effect(self, upgrade_id: str, level: int):
-		"""Aplica el efecto de una mejora al estado del juego.
-		
-		Args:
-			upgrade_id: ID de la mejora
-			level: Nivel de la mejora
-		"""
-		# Los efectos se aplicarán en el GameState cuando se recalculen
-		# los multiplicadores en el próximo tick
-		pass
-
-	def update_ui(self, dt=None):
-		"""Actualiza la interfaz de usuario.
-		
-		Args:
-			dt: Delta time (no usado)
-		"""
-		# Actualizar monedas
-		if self.coins_label:
-			self.coins_label.text = f'{self.game_state.coins:,} monedas'
-
-		# Actualizar botones de mejoras
-		for upgrade_id, button in self.upgrade_buttons.items():
-			current_level = self.save_manager.get_upgrade_level(upgrade_id)
-			cost = self.calculate_cost(upgrade_id, current_level)
-			can_afford = self.game_state.coins >= cost
-			max_level_reached = current_level >= self.upgrades[upgrade_id]['max_level']
-
-			if max_level_reached:
-				button.text = 'MAX'
-				button.background_color = [0.4, 0.4, 0.4, 1]
-				button.disabled = True
+	
+	def on_building_button(self, building_type):
+		"""Maneja el clic en un botón de edificio para comprarlo."""
+		try:
+			success = self.game_state.building_manager.purchase_building(building_type, self.game_state)
+			if success:
+				logging.info(f"Edificio {building_type} comprado exitosamente")
+				self.update_ui()
 			else:
-				button.text = f'💰 {cost:,}'
-				button.background_color = [0.2, 0.8, 0.2, 1] if can_afford else [0.6, 0.2, 0.2, 1]
-				button.disabled = not can_afford
-
-		# Actualizar labels de nivel
-		for upgrade_id, label in self.upgrade_labels.items():
-			current_level = self.save_manager.get_upgrade_level(upgrade_id)
-			upgrade_data = self.upgrades[upgrade_id]
-			label.text = f"{upgrade_data['name']} (Nv. {current_level})"
-
-	def on_back_button(self, instance: Button):
-		"""Maneja el clic en el botón de volver.
+				logging.warning(f"No se pudo comprar edificio {building_type}")
+		except Exception as e:
+			logging.error(f"Error comprando edificio: {e}")
+	
+	def _get_category_display_name(self, category: UpgradeCategory) -> str:
+		"""Obtiene el nombre para mostrar de una categoría."""
+		names = {
+			UpgradeCategory.ECONOMIC: "💰 Económicas",
+			UpgradeCategory.EFFICIENCY: "⚡ Eficiencia", 
+			UpgradeCategory.CRITICAL: "🍀 Críticos",
+			UpgradeCategory.MULTIPLIER: "🌟 Multiplicadores"
+		}
+		return names.get(category, category.value.title())
+	
+	def _create_category_content(self, category: UpgradeCategory):
+		"""Crea el contenido para una categoría de mejoras."""
+		# Crear scroll view para las mejoras
+		scroll = ScrollView()
+		upgrades_layout = GridLayout(
+			cols=2,
+			spacing=10,
+			size_hint_y=None,
+			padding=[5, 5, 5, 5]
+		)
+		upgrades_layout.bind(minimum_height=upgrades_layout.setter('height'))
 		
-		Args:
-			instance: Instancia del botón presionado
-		"""
-		logging.info("Volviendo desde mejoras")
+		# Obtener mejoras de esta categoría
+		category_upgrades = self.game_state.upgrade_manager.get_upgrades_by_category(category)
+		
+		# Crear botones para cada mejora en esta categoría
+		for upgrade_type in category_upgrades:
+			upgrade_info = self.game_state.upgrade_manager.get_upgrade_info(upgrade_type)
+			
+			upgrade_button = UpgradeButton(
+				upgrade_type=upgrade_type,
+				upgrade_info=upgrade_info,
+				game_state=self.game_state,
+				size_hint_y=None,
+				height=120,
+				halign='center',
+				valign='middle'
+			)
+			upgrade_button.bind(on_press=self.on_upgrade_button)
+			
+			self.upgrade_buttons[upgrade_type] = upgrade_button
+			upgrades_layout.add_widget(upgrade_button)
+		
+		scroll.add_widget(upgrades_layout)
+		return scroll
+		
+	def on_upgrade_button(self, instance: UpgradeButton):
+		"""Maneja el clic en un botón de mejora para comprarla."""
+		try:
+			success = self.game_state.upgrade_manager.purchase_upgrade(instance.upgrade_type, self.game_state)
+			if success:
+				logging.info(f"Mejora {instance.upgrade_type} comprada exitosamente")
+				self.update_ui()
+			else:
+				logging.warning(f"No se pudo comprar mejora {instance.upgrade_type}")
+		except Exception as e:
+			logging.error(f"Error comprando mejora: {e}")
+	
+	def on_close_button(self, instance):
+		"""Maneja el clic en el botón de cerrar."""
+		logging.info("Cerrando pantalla de mejoras")
 		self.go_back()
-
+	
+	def update_ui(self, dt: float = 0):
+		"""Actualiza la interfaz con los datos actuales."""
+		try:
+			# Actualizar estadísticas globales
+			stats = self.game_state.upgrade_manager.get_upgrade_stats()
+			
+			self.stats_labels['click_multiplier'].text = f"Multiplicador Clic: {stats['click_multiplier']:.1f}x"
+			self.stats_labels['building_multiplier'].text = f"Multiplicador Edificios: {stats['building_multiplier']:.1f}x"
+			self.stats_labels['total_spent'].text = f"💰 Gastado: {stats['total_spent']:,.0f}"
+			
+			# Actualizar botones de mejoras
+			for upgrade_button in self.upgrade_buttons.values():
+				upgrade_button.update_display()
+				
+		except Exception as e:
+			logging.error(f"Error actualizando UI de mejoras: {e}")
+	
 	def on_enter(self, *args):
-		"""Método llamado cuando se entra a la pantalla."""
+		"""Se ejecuta cuando se entra a la pantalla."""
 		super().on_enter(*args)
-
-		# Actualizar UI al entrar
+		logging.info("Entrando a pantalla de mejoras")
+		
+		# Actualizar UI inmediatamente
 		self.update_ui()
-
-		logging.info("Entrada a pantalla de mejoras")
-
+		
+		# Programar actualizaciones periódicas
+		if not self.update_event:
+			self.update_event = Clock.schedule_interval(self.update_ui, 1.0)
+	
 	def on_leave(self, *args):
-		"""Método llamado cuando se sale de la pantalla."""
+		"""Se ejecuta cuando se sale de la pantalla."""
 		super().on_leave(*args)
-
-		# Cancelar actualizaciones
+		logging.info("Saliendo de pantalla de mejoras")
+		
+		# Cancelar actualizaciones periódicas
 		if self.update_event:
-			self.update_event.cancel()
-
-		logging.info("Salida de pantalla de mejoras")
+			Clock.unschedule(self.update_event)
+			self.update_event = None

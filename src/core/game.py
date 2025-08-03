@@ -10,6 +10,9 @@ from typing import Any
 
 from utils.save import get_save_manager
 from core.resources import ResourceManager, ResourceType
+from core.buildings import BuildingManager
+from core.upgrades import UpgradeManager
+from core.achievements import AchievementManager
 
 
 class GameState:
@@ -21,6 +24,15 @@ class GameState:
 
 		# Sistema de recursos múltiples
 		self.resource_manager = ResourceManager()
+
+		# Sistema de edificios generadores
+		self.building_manager = BuildingManager(self.resource_manager)
+
+		# Sistema de mejoras permanentes
+		self.upgrade_manager = UpgradeManager(self.resource_manager)
+
+		# Sistema de logros
+		self.achievement_manager = AchievementManager(self.save_manager.db, self.resource_manager)
 
 		# Estado principal del juego (mantenido para compatibilidad)
 		self.coins = 0
@@ -89,7 +101,12 @@ class GameState:
 		# Calcular monedas ganadas
 		base_coins = 1
 		current_multiplier = self.get_current_multiplier()
-		coins_earned = int(base_coins * current_multiplier)
+		
+		# Aplicar multiplicadores de mejoras
+		upgrade_multiplier = self.upgrade_manager.get_click_multiplier()
+		total_multiplier = current_multiplier * upgrade_multiplier
+		
+		coins_earned = int(base_coins * total_multiplier)
 
 		# Actualizar estado tradicional (compatibilidad)
 		self.coins += coins_earned
@@ -110,7 +127,25 @@ class GameState:
 		self.save_manager.increment_stat('clicks_today', 1)
 		self.save_manager.increment_stat('coins_earned_today', coins_earned)
 
+		# Verificar logros de clics
+		self.achievement_manager.check_click_achievements(self.total_clicks)
+		
+		# Verificar logros de monedas
+		current_money = self.resource_manager.get_resource(ResourceType.COINS)
+		self.achievement_manager.check_money_achievements(current_money)
+
 		return coins_earned
+
+	def update_building_production(self) -> dict:
+		"""Actualiza la producción de todos los edificios.
+		
+		Returns:
+			Diccionario con recursos producidos
+		"""
+		if not self.game_running:
+			return {}
+			
+		return self.building_manager.collect_all_production()
 
 	def get_current_multiplier(self) -> float:
 		"""Obtiene el multiplicador actual considerando bonificaciones.
@@ -188,6 +223,31 @@ class GameState:
 		self.coins -= amount
 		return True
 
+	def on_building_purchased(self, building_type, new_count: int) -> None:
+		"""Hook llamado cuando se compra un edificio.
+		
+		Args:
+			building_type: Tipo de edificio comprado
+			new_count: Cantidad total del edificio después de la compra
+		"""
+		# Verificar logros de edificios
+		total_buildings = sum(self.building_manager.buildings.values())
+		self.achievement_manager.check_building_achievements(total_buildings)
+		
+		logging.debug(f"Edificio comprado: {building_type}, total buildings: {total_buildings}")
+
+	def on_upgrade_purchased(self, upgrade_type) -> None:
+		"""Hook llamado cuando se compra una mejora.
+		
+		Args:
+			upgrade_type: Tipo de mejora comprada
+		"""
+		# Verificar logros de mejoras
+		total_upgrades = sum(1 for upgrade in self.upgrade_manager.upgrades.values() if upgrade.level > 0)
+		self.achievement_manager.check_upgrade_achievements(total_upgrades)
+		
+		logging.debug(f"Mejora comprada: {upgrade_type}, total upgrades: {total_upgrades}")
+
 	def get_game_stats(self) -> dict[str, Any]:
 		"""Obtiene estadísticas completas del juego.
 		
@@ -230,7 +290,9 @@ class GameState:
 			'total_clicks': self.total_clicks,
 			'multiplier': self.multiplier,
 			'total_playtime': self.total_playtime + current_session_time,
-			'resources': self.resource_manager.get_save_data()
+			'resources': self.resource_manager.get_save_data(),
+			'buildings': self.building_manager.get_save_data(),
+			'upgrades': self.upgrade_manager.get_save_data()
 		}
 
 		return self.save_manager.save_game_state(game_state)
@@ -247,6 +309,14 @@ class GameState:
 		# Cargar recursos si existen
 		if 'resources' in saved_state:
 			self.resource_manager.load_save_data(saved_state['resources'])
+		
+		# Cargar edificios si existen
+		if 'buildings' in saved_state:
+			self.building_manager.load_save_data(saved_state['buildings'])
+		
+		# Cargar mejoras si existen
+		if 'upgrades' in saved_state:
+			self.upgrade_manager.load_save_data(saved_state['upgrades'])
 		
 		# Sincronizar coins con el sistema de recursos
 		self.resource_manager.set_resource(ResourceType.COINS, self.coins)

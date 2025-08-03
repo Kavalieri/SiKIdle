@@ -36,6 +36,7 @@ class MainScreen(SiKIdleScreen):
 		self.multiplier_label = None
 		self.bonus_label = None
 		self.ad_button = None
+		self.production_label = None
 
 		self.build_ui()
 
@@ -210,14 +211,23 @@ class MainScreen(SiKIdleScreen):
 			spacing=10
 		)
 
-		# Botón de mejoras
-		upgrades_button = Button(
-			text='⬆️ Mejoras',
+		# Botón de gestión principal (mejoras + edificios)
+		management_button = Button(
+			text='🏗️ Gestión\n(Mejoras & Edificios)',
 			font_size='18sp',
-			background_color=[0.8, 0.4, 0.8, 1]  # Púrpura
+			background_color=[0.2, 0.7, 0.9, 1]  # Azul principal
 		)
-		upgrades_button.bind(on_press=self.on_upgrades_button)
-		action_buttons.add_widget(upgrades_button)
+		management_button.bind(on_press=self.on_management_button)
+		action_buttons.add_widget(management_button)
+
+		# Botón de estadísticas
+		stats_button = Button(
+			text='📊 Estadísticas',
+			font_size='18sp',
+			background_color=[0.6, 0.8, 0.4, 1]  # Verde
+		)
+		stats_button.bind(on_press=self.on_stats_button)
+		action_buttons.add_widget(stats_button)
 
 		# Botón de anuncio con recompensa
 		self.ad_button = Button(
@@ -230,11 +240,20 @@ class MainScreen(SiKIdleScreen):
 
 		bottom_area.add_widget(action_buttons)
 
+		# Indicador de producción automática
+		self.production_label = Label(
+			text='📈 Producción automática: 0 monedas/seg',
+			font_size='12sp',
+			size_hint=(1, 0.3),
+			color=[0.7, 0.9, 0.7, 1]  # Verde claro
+		)
+		bottom_area.add_widget(self.production_label)
+
 		# Espacio para banner publicitario inferior
 		banner_bottom = Label(
 			text='[ BANNER PUBLICITARIO INFERIOR ]',
 			font_size='12sp',
-			size_hint=(1, 0.5),
+			size_hint=(1, 0.2),
 			color=[0.5, 0.5, 0.5, 1]
 		)
 		bottom_area.add_widget(banner_bottom)
@@ -298,6 +317,24 @@ class MainScreen(SiKIdleScreen):
 			self.ad_button.disabled = False
 			logging.info("Botón de anuncio reactivado")
 
+	def on_management_button(self, instance: Button):
+		"""Maneja el clic en el botón de gestión (mejoras + edificios).
+		
+		Args:
+			instance: Instancia del botón presionado
+		"""
+		logging.info("Navegando a pantalla de gestión unificada")
+		self.navigate_to('upgrades')  # La pantalla de mejoras ahora incluye edificios
+
+	def on_stats_button(self, instance: Button):
+		"""Maneja el clic en el botón de estadísticas.
+		
+		Args:
+			instance: Instancia del botón presionado
+		"""
+		logging.info("Navegando a pantalla de estadísticas")
+		self.navigate_to('stats')
+
 	def on_upgrades_button(self, instance: Button):
 		"""Maneja el clic en el botón de mejoras.
 		
@@ -306,6 +343,15 @@ class MainScreen(SiKIdleScreen):
 		"""
 		logging.info("Navegando a pantalla de mejoras")
 		self.navigate_to('upgrades')
+
+	def on_buildings_button(self, instance: Button):
+		"""Maneja el clic en el botón de edificios.
+		
+		Args:
+			instance: Instancia del botón presionado
+		"""
+		logging.info("Navegando a pantalla de edificios")
+		self.navigate_to('buildings')
 
 	def on_back_button(self, instance: Button):
 		"""Maneja el clic en el botón de volver.
@@ -322,11 +368,27 @@ class MainScreen(SiKIdleScreen):
 		Args:
 			dt: Delta time (no usado)
 		"""
+		# Actualizar la producción automática de los edificios
+		if hasattr(self.game_state, 'update_building_production'):
+			self.game_state.update_building_production()
+
 		stats = self.game_state.get_game_stats()
 
 		# Actualizar contador de monedas tradicional
 		if self.coins_label:
 			self.coins_label.text = f"💰 {stats['coins']:,} monedas"
+
+		# Actualizar indicador de producción por segundo
+		if hasattr(self, 'production_label') and self.production_label:
+			total_production = 0.0
+			if hasattr(self.game_state, 'building_manager'):
+				for building_type in self.game_state.building_manager.buildings:
+					building = self.game_state.building_manager.buildings[building_type]
+					if building.count > 0:
+						building_info = self.game_state.building_manager.get_building_info(building_type)
+						total_production += building_info.base_production * building.count
+
+			self.production_label.text = f"Producción: {total_production:.1f} monedas/seg"
 
 		# Actualizar panel de recursos múltiples
 		if hasattr(self, 'resources_panel') and self.resources_panel:
@@ -356,21 +418,14 @@ class MainScreen(SiKIdleScreen):
 				self.bonus_label.text = ''
 
 	def on_menu_button(self, instance: Button):
-		"""Maneja el clic en el botón del menú lateral.
+		"""Maneja el clic en el botón del menú.
 		
 		Args:
 			instance: Instancia del botón presionado
 		"""
-		logging.info("Botón de menú lateral presionado")
-		
-		# Acceder al menú lateral a través del manager de referencia
-		if self.manager_ref and hasattr(self.manager_ref, 'side_menu'):
-			if self.manager_ref.side_menu:
-				self.manager_ref.side_menu.toggle_menu()
-			else:
-				logging.warning("No se encontró referencia al menú lateral")
-		else:
-			logging.warning("No hay referencia al gestor de pantallas disponible")
+		logging.info("Botón de menú presionado - redirigiendo a configuración")
+		# Como eliminamos el menú lateral, redirigimos a configuración
+		self.navigate_to('settings')
 
 	def on_enter(self, *args):
 		"""Método llamado cuando se entra a la pantalla."""

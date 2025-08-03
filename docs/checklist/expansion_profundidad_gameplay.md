@@ -12,53 +12,69 @@
 - **Realm Grinder**: Ramas de facción y especialización
 - **Tap Titans**: Armas, artefactos y progresión infinita
 
+### Arquitectura de Interfaz Rediseñada:
+1. **Pantalla Principal**: Área de clic + indicadores básicos + navegación directa
+2. **Sistema de Pestañas Centralizadas**: Un menú principal organizado por categorías
+3. **Menú Lateral Reservado**: Solo para eventos temporales y notificaciones futuras
+4. **Sin Banners Intrusivos**: Interfaz limpia y centrada en gameplay
+
 ### Sistemas Principales a Implementar:
-1. **Menú lateral deslizable** con múltiples categorías
+1. **Sistema de pestañas principal** con categorías organizadas
 2. **Sistema de prestigio** y renacimiento
 3. **Loot aleatorio** con rareza
 4. **Árbol de talentos** especializable
 5. **Múltiples monedas** y recursos
-6. **Eventos temporales** y desafíos
+6. **Eventos temporales** (futuro)
 
 ---
 
 ## 📋 Tareas por Sistema
 
-### 🎮 1. Interfaz Principal Mejorada
-- [ ] **Botón de salida** en StartScreen con confirmación
-- [ ] **Menú lateral deslizable** que se abre desde cualquier pantalla
-- [ ] **Animaciones suaves** para apertura/cierre del menú lateral
-- [ ] **Header dinámico** que muestre múltiples recursos
-- [ ] **Notificaciones emergentes** para logros y loot
-- [ ] **Efecto de partículas** en clics importantes
+### 🎮 1. Sistema de Navegación Centralizada ✅ COMPLETADO
+- [x] **Pantalla principal** limpia con área de clic optimizada
+- [x] **Indicadores de recursos** en header sin saturar
+- [x] **Navegación directa** desde pantalla principal simplificada
+- [x] **Interfaz unificada** para mejoras y edificios en una sola pantalla
+- [x] **Eliminación del menú lateral** - arquitectura simplificada
+- [x] **Unificación de edificios y mejoras** en gestión principal
+- [x] **Botón único de gestión** reemplazando botones separados
+- [ ] **Transiciones suaves** entre pestañas con animaciones (futuro)
 
-### 🏗️ 2. Sistema de Edificios/Generadores
-- [ ] Crear `src/core/buildings.py` con generadores automáticos
-- [ ] **Granjas** (1 moneda/seg) → **Fábricas** (50 monedas/seg) → **Bancos** (1000 monedas/seg)
-- [ ] **Laboratorios** (investigación) → **Portales** (dimensiones)
+### 🏗️ 2. Sistema de Edificios/Generadores ✅ COMPLETADO
+- [x] Crear `src/core/buildings.py` con generadores automáticos
+- [x] **Granjas** (1 moneda/seg) → **Fábricas** (50 monedas/seg) → **Bancos** (1000 monedas/seg)
+- [x] **Laboratorios** (investigación) → **Portales** (dimensiones)
+- [x] **Pantalla de gestión de edificios** con compra manual
+- [x] **Costos escalables** con fórmula base_cost * 1.15^cantidad
+- [x] **Producción automática** integrada con sistema de recursos
+- [x] **Guardado/carga** de estado de edificios
 - [ ] **Gestores automáticos** para cada edificio (compra automática)
 - [ ] **Sinergias entre edificios** (bonificaciones cruzadas)
 - [ ] **Evoluciones de edificios** a versiones superiores
 
-### 💎 3. Sistema de Loot Aleatorio
-- [ ] Crear `src/core/loot.py` con sistema de drops
-- [ ] **Rarezas**: Común (70%) → Raro (20%) → Épico (8%) → Legendario (2%)
-- [ ] **Tipos de loot**: Armas, Artefactos, Gemas, Materiales
-- [ ] **Efectos de armas**: +% monedas por clic, +% velocidad crítico
-- [ ] **Artefactos pasivos**: +% ingresos globales, +% experiencia
-- [ ] **Sistema de combinación** de materiales
-- [ ] **Inventario visual** con filtros por rareza
+### 💎 3. Sistema de Mejoras Unificado ✅ COMPLETADO
+- [x] Crear `src/core/upgrades.py` con mejoras permanentes
+- [x] **Categorías de mejoras**:
+  - [x] 💰 **Económicas**: +% ingresos por clic, +% ingresos edificios, +% ingresos globales
+  - [x] ⚡ **Eficiencia**: -% costos edificios, +% velocidad producción
+  - [x] 🎯 **Críticos**: +% probabilidad crítico, +% multiplicador crítico
+  - [x] 📈 **Multiplicadores**: Bonificaciones exponenciales (ingresos y costos)
+- [x] **Sistema de prerequisitos** para mejoras avanzadas
+- [x] **Pantalla de mejoras** con pestañas por categoría
+- [x] **Efectos permanentes** guardados e integrados con GameState
+- [x] **9 tipos de mejoras** implementados y funcionales
+- [x] **Integración con edificios** - gestión unificada en pantalla de mejoras
 
-### 🌟 4. Árbol de Talentos
+### 🌟 4. Árbol de Talentos ⏳ FUTURO
 - [ ] Crear `src/core/talents.py` con sistema de especialización
 - [ ] **Rama Económica**: Eficiencia, ingresos pasivos, multiplicadores
-- [ ] **Rama Combate**: Daño crítico, velocidad de clic, armas especiales
+- [ ] **Rama Combate**: Daño crítico, velocidad de clic, armas especiales  
 - [ ] **Rama Mística**: Magia, hechizos temporales, invocaciones
 - [ ] **Rama Exploración**: Descubrimiento, loot raro, aventuras
 - [ ] **Puntos de talento** ganados por niveles y logros
 - [ ] **Respecs gratuitos** cada prestige
 
-### 🔄 5. Sistema de Prestigio/Renacimiento
+### 🔄 5. Sistema de Prestigio/Renacimiento ⏳ FUTURO
 - [ ] Crear `src/core/prestige.py` con mecánica de reinicio
 - [ ] **Moneda de prestigio**: Cristales de poder obtenidos al reiniciar
 - [ ] **Bonificaciones permanentes**: Multiplicadores de base
@@ -67,14 +83,14 @@
 - [ ] **Cálculo automático** del beneficio del prestigio
 
 ### 💰 6. Múltiples Monedas y Recursos
-- [ ] Expandir `src/core/game.py` para múltiples recursos
-- [ ] **Monedas**: Oro (básico) → Platino (prestigio) → Diamantes (premium)
-- [ ] **Recursos especiales**: Energía (habilidades), Experiencia (niveles)
-- [ ] **Materiales de crafteo**: Hierro, Madera, Piedra, Cristales
+- [x] Expandir `src/core/game.py` para múltiples recursos
+- [x] **Monedas**: Oro (básico) → Platino (prestigio) → Diamantes (premium)
+- [x] **Recursos especiales**: Energía (habilidades), Experiencia (niveles)
+- [x] **Materiales de crafteo**: Hierro, Madera, Piedra, Cristales
 - [ ] **Conversión entre recursos** con ratios dinámicos
 - [ ] **Mercado interno** para intercambio
 
-### 🏆 7. Sistema de Logros y Desafíos
+### 🏆 6. Sistema de Logros y Desafíos ⏳ FUTURO
 - [ ] Crear `src/core/achievements.py` con logros complejos
 - [ ] **Logros de progresión**: "Primer millón", "100 edificios"
 - [ ] **Logros de tiempo**: "1 hora jugando", "Login diario 7 días"
@@ -82,30 +98,21 @@
 - [ ] **Desafíos temporales**: Eventos con recompensas únicas
 - [ ] **Rankings globales** (simulados localmente)
 
-### ⚔️ 8. Sistema de Combate/Aventuras
-- [ ] Crear `src/core/combat.py` con sistema de batalla
-- [ ] **Zonas de aventura**: Bosques → Cuevas → Montañas → Dimensiones
-- [ ] **Enemigos automáticos**: HP escalable, recompensas proporcionales
-- [ ] **Habilidades especiales**: Bola de fuego, Lluvia de monedas, Escudo
-- [ ] **Jefes semanales**: Encuentros únicos con loot especial
-- [ ] **Progresión automática** cuando se está offline
+### 🎲 7. Sistema de Loot Aleatorio ⏳ FUTURO LEJANO
+- [ ] Crear `src/core/loot.py` con sistema de drops
+- [ ] **Rarezas**: Común (70%) → Raro (20%) → Épico (8%) → Legendario (2%)
+- [ ] **Tipos de loot**: Armas, Artefactos, Gemas, Materiales
+- [ ] **Efectos de armas**: +% monedas por clic, +% velocidad crítico
+- [ ] **Artefactos pasivos**: +% ingresos globales, +% experiencia
+- [ ] **Sistema de combinación** de materiales
+- [ ] **Inventario visual** con filtros por rareza
 
-### 🎨 9. Menú Lateral Categorizado
-- [ ] Crear `src/ui/side_menu.py` con navegación expandida
-- [ ] **Categoría Edificios**: Lista de todos los generadores
-- [ ] **Categoría Mejoras**: Upgrades tradicionales organizadas
-- [ ] **Categoría Talentos**: Árbol de especialización
-- [ ] **Categoría Inventario**: Loot, armas, artefactos
-- [ ] **Categoría Logros**: Progreso y desafíos
-- [ ] **Categoría Aventura**: Combate y exploración
-- [ ] **Categoría Prestigio**: Información y opciones de renacimiento
-
-### 🌐 10. Eventos y Contenido Temporal
-- [ ] Crear `src/core/events.py` con sistema de eventos
+### 🌐 8. Sistema de Eventos (Menú Lateral) ⏳ FUTURO LEJANO
+- [ ] **Refactorizar menú lateral** para eventos únicamente
 - [ ] **Eventos estacionales**: Navidad, Halloween, Verano
 - [ ] **Multiplicadores temporales**: "Hora feliz de oro"
 - [ ] **Misiones especiales**: Objetivos únicos con deadlines
-- [ ] **Coleccionables limitados**: Skins, títulos, decoraciones
+- [ ] **Notificaciones push** para eventos importantes
 - [ ] **Calendario de recompensas**: Login diario mejorado
 
 ---
@@ -132,55 +139,52 @@
 
 ---
 
-## 📱 Adaptaciones para Android
+## 🎯 Orden de Implementación Rediseñado
 
-### 🎮 Controles Táctiles Mejorados
-- [ ] **Gestos de deslizamiento** para abrir menús
-- [ ] **Toque y mantener** para información detallada
-- [ ] **Pellizco para zoom** en árboles de talentos
-- [ ] **Doble toque** para acciones rápidas
-- [ ] **Vibración háptica** en acciones importantes
+### 🥇 Prioridad 1 (Fundamentos Sólidos):
+1. ✅ Sistema de edificios completo
+2. ✅ Múltiples recursos funcionales
+3. ✅ **Sistema de mejoras unificado** (económicas, eficiencia, críticos, multiplicadores)
+4. ✅ **Interfaz unificada** para mejoras y edificios en una sola pantalla
+5. ✅ **Eliminación del menú lateral** y simplificación de navegación
 
-### 📊 UI Responsive Avanzada
-- [ ] **Paneles redimensionables** según orientación
-- [ ] **Modo compacto** para pantallas pequeñas
-- [ ] **Notificaciones push** para eventos offline
-- [ ] **Widget de progreso** para la pantalla de inicio
+### 🥈 Prioridad 2 (Profundidad de Gameplay): ⏳ SIGUIENTE FASE
+6. Sistema de logros fundamentales
+7. Primera iteración de prestigio
+8. Árbol de talentos (rama económica)
+9. Sistema de pestañas principales avanzado
 
----
-
-## 🗄️ Expansión de Base de Datos
-
-### Nuevas Tablas Requeridas:
-- [ ] **`buildings`**: Nivel, cantidad, ingresos, gestores
-- [ ] **`talents`**: Rama, nivel, puntos invertidos
-- [ ] **`inventory`**: Ítem, rareza, stats, cantidad
-- [ ] **`achievements`**: ID, completado, fecha, progreso
-- [ ] **`prestige_data`**: Cristales, bonificaciones, historia
-- [ ] **`events`**: Activos, progreso, recompensas reclamadas
-- [ ] **`combat_progress`**: Zona actual, estadísticas de batalla
-
----
-
-## 🎯 Orden de Implementación Sugerido
-
-### 🥇 Prioridad 1 (Base Expandida):
-1. Botón de salida en StartScreen
-2. Menú lateral básico con categorías
-3. Sistema de múltiples monedas
-4. Edificios básicos (primeros 3-4 tipos)
-
-### 🥈 Prioridad 2 (Profundidad):
-5. Sistema de loot aleatorio
-6. Árbol de talentos (rama básica)
-7. Logros fundamentales
-8. Primera iteración de prestigio
-
-### 🥉 Prioridad 3 (Complejidad):
-9. Sistema de combate
+### 🥉 Prioridad 3 (Contenido Avanzado):
+9. Sistema de loot aleatorio
 10. Eventos temporales
-11. Sinergias avanzadas
+11. Sinergias avanzadas entre sistemas
 12. Elementos visuales premium
+
+---
+
+## �️ Arquitectura de Interfaz Objetivo
+
+### Pantalla Principal:
+```
+[💰 1,234 coins] [⚡ 56 energy] [🔧 12 iron] [📊 Stats] [⚙️ Settings]
+                                                                    
+                    [GRAN ÁREA DE CLIC]                           
+                   🎯 +1.5x multiplicador                         
+                                                                    
+[🏗️ Edificios] [⚡ Mejoras] [🌟 Talentos] [🎒 Inventario] [🏆 Logros] [🔄 Prestigio]
+```
+
+### Sistema de Pestañas:
+- **Navegación horizontal** tipo tabs en la parte inferior
+- **Contenido dinámico** en el área central
+- **Contexto preservado** al cambiar pestañas
+- **Indicadores de novedad** en pestañas con contenido nuevo
+
+### Menú Lateral (Futuro):
+- **Solo eventos temporales**
+- **Notificaciones importantes**
+- **Acceso rápido a ofertas especiales**
+- **Calendario de recompensas**
 
 ---
 

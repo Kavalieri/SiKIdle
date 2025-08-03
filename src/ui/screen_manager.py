@@ -13,26 +13,17 @@ from typing import Any, Optional
 
 
 class SiKIdleMainContainer(FloatLayout):
-	"""Contenedor principal que incluye el screen manager y el menú lateral."""
+	"""Contenedor principal simplificado sin menú lateral."""
 	
-	def __init__(self, **kwargs: Any):
+	def __init__(self, game_state=None, **kwargs: Any):
 		"""Inicializa el contenedor principal."""
 		super().__init__(**kwargs)
 		
-		# Crear el screen manager
-		self.screen_manager = SiKIdleScreenManager()
+		# Crear solo el screen manager
+		self.screen_manager = SiKIdleScreenManager(game_state=game_state)
 		self.add_widget(self.screen_manager)
 		
-		# Crear el menú lateral
-		from ui.side_menu import SideMenu
-		self.side_menu = SideMenu(size_hint=(1, 1))
-		self.side_menu.set_manager_reference(self.screen_manager)
-		self.add_widget(self.side_menu)
-		
-		# Configurar referencias cruzadas
-		self.screen_manager.set_side_menu(self.side_menu)
-		
-		logging.info("Contenedor principal inicializado con menú lateral")
+		logging.info("Contenedor principal inicializado sin menú lateral")
 	
 	def get_screen_manager(self) -> 'SiKIdleScreenManager':
 		"""Retorna la referencia al screen manager.
@@ -41,20 +32,12 @@ class SiKIdleMainContainer(FloatLayout):
 			SiKIdleScreenManager: Gestor de pantallas
 		"""
 		return self.screen_manager
-	
-	def get_side_menu(self) -> 'SideMenu':
-		"""Retorna la referencia al menú lateral.
-		
-		Returns:
-			SideMenu: Menú lateral
-		"""
-		return self.side_menu
 
 
 class SiKIdleScreenManager(ScreenManager):
 	"""Gestor principal de pantallas para SiKIdle."""
 
-	def __init__(self, **kwargs: Any):
+	def __init__(self, game_state=None, **kwargs: Any):
 		"""Inicializa el gestor de pantallas."""
 		super().__init__(**kwargs)
 
@@ -69,19 +52,13 @@ class SiKIdleScreenManager(ScreenManager):
 		self.settings_screen = None
 		self.stats_screen = None
 		self.upgrades_screen = None
+		self.buildings_screen = None
+		self.achievements_screen = None
 		
-		# Referencia al menú lateral
-		self.side_menu = None
+		# Estado del juego
+		self.game_state = game_state
 
 		logging.info("Gestor de pantallas inicializado")
-	
-	def set_side_menu(self, side_menu: Any):
-		"""Establece la referencia al menú lateral.
-		
-		Args:
-			side_menu: Instancia del menú lateral
-		"""
-		self.side_menu = side_menu
 
 	def add_screens(self):
 		"""Añade todas las pantallas al gestor."""
@@ -91,6 +68,8 @@ class SiKIdleScreenManager(ScreenManager):
 		from ui.start_screen import StartScreen
 		from ui.stats_screen import StatsScreen
 		from ui.upgrades_screen import UpgradesScreen
+		from ui.buildings_screen import BuildingsScreen
+		from ui.achievements_screen import AchievementsScreen
 
 		# Crear e inicializar pantallas
 		self.loading_screen = LoadingScreen(name='loading')
@@ -98,7 +77,30 @@ class SiKIdleScreenManager(ScreenManager):
 		self.main_screen = MainScreen(name='main')
 		self.settings_screen = SettingsScreen(name='settings')
 		self.stats_screen = StatsScreen(name='stats')
-		self.upgrades_screen = UpgradesScreen(name='upgrades')
+		
+		# Crear pantalla de mejoras con manejo de errores
+		try:
+			self.upgrades_screen = UpgradesScreen(name='upgrades')
+			logging.info("Pantalla de mejoras creada exitosamente")
+		except Exception as e:
+			logging.error(f"Error creando pantalla de mejoras: {e}")
+			# Crear pantalla de respaldo
+			from kivy.uix.label import Label
+			from kivy.uix.screenmanager import Screen
+			fallback_screen = Screen(name='upgrades')
+			fallback_screen.add_widget(Label(text=f"Error en mejoras: {e}"))
+			self.upgrades_screen = fallback_screen
+		
+		self.buildings_screen = BuildingsScreen(
+			name='buildings', 
+			game_state=self.game_state, 
+			manager_ref=self
+		)
+		
+		self.achievements_screen = AchievementsScreen(
+			name='achievements',
+			manager_ref=self
+		)
 
 		# Añadir pantallas al gestor
 		self.add_widget(self.loading_screen)
@@ -107,6 +109,8 @@ class SiKIdleScreenManager(ScreenManager):
 		self.add_widget(self.settings_screen)
 		self.add_widget(self.stats_screen)
 		self.add_widget(self.upgrades_screen)
+		self.add_widget(self.buildings_screen)
+		self.add_widget(self.achievements_screen)
 
 		logging.info("Todas las pantallas añadidas al gestor")
 
@@ -146,6 +150,12 @@ class SiKIdleScreenManager(ScreenManager):
 		if self.upgrades_screen:
 			self.upgrades_screen.on_enter()
 
+	def show_achievements(self):
+		"""Muestra la pantalla de logros."""
+		self.current = 'achievements'
+		if self.achievements_screen:
+			self.achievements_screen.on_enter()
+
 	def go_back(self):
 		"""Navega hacia atrás según la pantalla actual."""
 		current = self.current
@@ -154,7 +164,7 @@ class SiKIdleScreenManager(ScreenManager):
 			self.show_start()
 		elif current in ['settings', 'stats']:
 			self.show_start()
-		elif current == 'upgrades':
+		elif current in ['upgrades', 'buildings', 'achievements']:
 			self.show_main_game()
 		else:
 			# Por defecto ir a inicio
@@ -204,6 +214,8 @@ class SiKIdleScreen(Screen):
 				self.manager_ref.show_stats()
 			elif screen_name == 'upgrades':
 				self.manager_ref.show_upgrades()
+			elif screen_name == 'achievements':
+				self.manager_ref.show_achievements()
 		else:
 			logging.warning(f"No se puede navegar a {screen_name}: sin referencia al manager")
 
