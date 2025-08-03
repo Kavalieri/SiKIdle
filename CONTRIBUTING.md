@@ -1,23 +1,31 @@
-# Guía de colaboración - SiKIdle
+# Guía de Contribución - SiKIdle
 
-Gracias por tu interés en colaborar con SiKIdle.
+¡Gracias por tu interés en contribuir a SiKIdle! Este documento establece las pautas y convenciones para mantener la calidad y consistencia del proyecto.
 
-## Requisitos
+## 🛠️ Tecnologías y Convenciones
 
-- Python 3.11+
-- Poetry instalado (`pip install poetry`)
-- Conocimiento básico de Git y GitHub
-- Familiaridad con PEP8, type hints y docstrings
+### Lenguaje y Frameworks
+- **Python 3.11+** estrictamente
+- **Kivy** para la interfaz (sin archivos `.kv`)
+- **SQLite** para persistencia
+- **pathlib** para manejo de rutas (no `os.path`)
 
-## Configuración del entorno
+### Estilo de Código
 
-```bash
-poetry install
-```
+#### Nomenclatura
+- `snake_case` para funciones y variables
+- `PascalCase` para clases
+- `UPPER_SNAKE_CASE` para constantes
 
-## Flujo de trabajo
+#### Indentación y Formato
+- **Tabulaciones** (no espacios) para indentación
+- Máximo 200 líneas por archivo
+- Máximo 30 líneas por función
+- Líneas de máximo 100 caracteres
 
-1. Crear una rama a partir de `main`:
+#### Type Hints y Documentación
+- **Type hints obligatorios** en todas las funciones públicas
+- **Docstrings en español** para todas las funciones
    ```bash
    git checkout -b feature/nombre
    ```

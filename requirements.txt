@@ -1,6 +1,13 @@
-# Dependencias principales
+# Dependencias principales para SiKIdle
 kivy>=2.3.0
-sqlite3  # incorporado en la stdlib de Python
+
+# Herramientas de desarrollo y calidad
+ruff>=0.1.0
+mypy>=1.5.0
+
+# Compilación para Android
+buildozer>=1.5.0
+cython>=0.29.0
 
 # Testing
 pytest>=7.2.0
