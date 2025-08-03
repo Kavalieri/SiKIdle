@@ -84,7 +84,7 @@ def ensure_directories() -> None:
 		get_logs_dir(),
 		get_cache_dir()
 	]
-	
+
 	for directory in directories:
 		directory.mkdir(parents=True, exist_ok=True)
 
@@ -100,7 +100,7 @@ def get_project_root() -> Path:
 	for parent in current_path.parents:
 		if (parent / "pyproject.toml").exists():
 			return parent
-	
+
 	# Fallback: directorio padre del src
 	return Path(__file__).resolve().parent.parent.parent
 

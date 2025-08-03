@@ -4,22 +4,64 @@ Maneja la navegación entre las diferentes pantallas del juego
 usando Kivy ScreenManager para transiciones suaves.
 """
 
-from kivy.uix.screenmanager import ScreenManager, Screen, SlideTransition  # type: ignore
-from kivy.clock import Clock  # type: ignore
 import logging
+
+from kivy.clock import Clock  # type: ignore
+from kivy.uix.floatlayout import FloatLayout  # type: ignore
+from kivy.uix.screenmanager import Screen, ScreenManager, SlideTransition  # type: ignore
+from typing import Any, Optional
+
+
+class SiKIdleMainContainer(FloatLayout):
+	"""Contenedor principal que incluye el screen manager y el menú lateral."""
+	
+	def __init__(self, **kwargs: Any):
+		"""Inicializa el contenedor principal."""
+		super().__init__(**kwargs)
+		
+		# Crear el screen manager
+		self.screen_manager = SiKIdleScreenManager()
+		self.add_widget(self.screen_manager)
+		
+		# Crear el menú lateral
+		from ui.side_menu import SideMenu
+		self.side_menu = SideMenu(size_hint=(1, 1))
+		self.side_menu.set_manager_reference(self.screen_manager)
+		self.add_widget(self.side_menu)
+		
+		# Configurar referencias cruzadas
+		self.screen_manager.set_side_menu(self.side_menu)
+		
+		logging.info("Contenedor principal inicializado con menú lateral")
+	
+	def get_screen_manager(self) -> 'SiKIdleScreenManager':
+		"""Retorna la referencia al screen manager.
+		
+		Returns:
+			SiKIdleScreenManager: Gestor de pantallas
+		"""
+		return self.screen_manager
+	
+	def get_side_menu(self) -> 'SideMenu':
+		"""Retorna la referencia al menú lateral.
+		
+		Returns:
+			SideMenu: Menú lateral
+		"""
+		return self.side_menu
 
 
 class SiKIdleScreenManager(ScreenManager):
 	"""Gestor principal de pantallas para SiKIdle."""
-	
-	def __init__(self, **kwargs):
+
+	def __init__(self, **kwargs: Any):
 		"""Inicializa el gestor de pantallas."""
 		super().__init__(**kwargs)
-		
+
 		# Configurar transición por defecto
 		self.transition = SlideTransition()
 		self.transition.duration = 0.3  # Transición de 300ms
-		
+
 		# Referencias a pantallas para fácil acceso
 		self.loading_screen = None
 		self.start_screen = None
@@ -28,17 +70,28 @@ class SiKIdleScreenManager(ScreenManager):
 		self.stats_screen = None
 		self.upgrades_screen = None
 		
+		# Referencia al menú lateral
+		self.side_menu = None
+
 		logging.info("Gestor de pantallas inicializado")
 	
+	def set_side_menu(self, side_menu: Any):
+		"""Establece la referencia al menú lateral.
+		
+		Args:
+			side_menu: Instancia del menú lateral
+		"""
+		self.side_menu = side_menu
+
 	def add_screens(self):
 		"""Añade todas las pantallas al gestor."""
 		from ui.loading_screen import LoadingScreen
-		from ui.start_screen import StartScreen
 		from ui.main_screen import MainScreen
 		from ui.settings_screen import SettingsScreen
+		from ui.start_screen import StartScreen
 		from ui.stats_screen import StatsScreen
 		from ui.upgrades_screen import UpgradesScreen
-		
+
 		# Crear e inicializar pantallas
 		self.loading_screen = LoadingScreen(name='loading')
 		self.start_screen = StartScreen(name='start')
@@ -46,7 +99,7 @@ class SiKIdleScreenManager(ScreenManager):
 		self.settings_screen = SettingsScreen(name='settings')
 		self.stats_screen = StatsScreen(name='stats')
 		self.upgrades_screen = UpgradesScreen(name='upgrades')
-		
+
 		# Añadir pantallas al gestor
 		self.add_widget(self.loading_screen)
 		self.add_widget(self.start_screen)
@@ -54,49 +107,49 @@ class SiKIdleScreenManager(ScreenManager):
 		self.add_widget(self.settings_screen)
 		self.add_widget(self.stats_screen)
 		self.add_widget(self.upgrades_screen)
-		
+
 		logging.info("Todas las pantallas añadidas al gestor")
-	
+
 	def show_loading(self):
 		"""Muestra la pantalla de carga."""
 		self.current = 'loading'
 		if self.loading_screen:
 			self.loading_screen.start_loading()
-	
+
 	def show_start(self):
 		"""Muestra la pantalla de inicio."""
 		self.current = 'start'
 		if self.start_screen:
 			self.start_screen.on_enter()
-	
+
 	def show_main_game(self):
 		"""Muestra la pantalla principal del juego."""
 		self.current = 'main'
 		if self.main_screen:
 			self.main_screen.on_enter()
-	
+
 	def show_settings(self):
 		"""Muestra la pantalla de configuración."""
 		self.current = 'settings'
 		if self.settings_screen:
 			self.settings_screen.on_enter()
-	
+
 	def show_stats(self):
 		"""Muestra la pantalla de estadísticas."""
 		self.current = 'stats'
 		if self.stats_screen:
 			self.stats_screen.on_enter()
-	
+
 	def show_upgrades(self):
 		"""Muestra la pantalla de mejoras."""
 		self.current = 'upgrades'
 		if self.upgrades_screen:
 			self.upgrades_screen.on_enter()
-	
+
 	def go_back(self):
 		"""Navega hacia atrás según la pantalla actual."""
 		current = self.current
-		
+
 		if current == 'main':
 			self.show_start()
 		elif current in ['settings', 'stats']:
@@ -106,18 +159,18 @@ class SiKIdleScreenManager(ScreenManager):
 		else:
 			# Por defecto ir a inicio
 			self.show_start()
-		
+
 		logging.debug(f"Navegación hacia atrás desde {current}")
 
 
 class SiKIdleScreen(Screen):
 	"""Clase base para todas las pantallas de SiKIdle."""
-	
+
 	def __init__(self, **kwargs):
 		"""Inicializa la pantalla base."""
 		super().__init__(**kwargs)
 		self.manager_ref = None
-	
+
 	def set_manager_reference(self, manager: SiKIdleScreenManager):
 		"""Establece referencia al gestor de pantallas.
 		
@@ -125,15 +178,15 @@ class SiKIdleScreen(Screen):
 			manager: Referencia al gestor principal
 		"""
 		self.manager_ref = manager
-	
+
 	def on_enter(self, *args):
 		"""Método llamado cuando se entra a la pantalla."""
 		logging.debug(f"Entrando a pantalla: {self.name}")
-	
+
 	def on_leave(self, *args):
 		"""Método llamado cuando se sale de la pantalla."""
 		logging.debug(f"Saliendo de pantalla: {self.name}")
-	
+
 	def navigate_to(self, screen_name: str):
 		"""Navega a una pantalla específica.
 		
@@ -153,12 +206,12 @@ class SiKIdleScreen(Screen):
 				self.manager_ref.show_upgrades()
 		else:
 			logging.warning(f"No se puede navegar a {screen_name}: sin referencia al manager")
-	
+
 	def go_back(self):
 		"""Navega hacia atrás."""
 		if self.manager_ref:
 			self.manager_ref.go_back()
-	
+
 	def schedule_update(self, callback, interval: float = 1.0):
 		"""Programa una actualización periódica.
 		
@@ -167,7 +220,7 @@ class SiKIdleScreen(Screen):
 			interval: Intervalo en segundos
 		"""
 		Clock.schedule_interval(callback, interval)
-	
+
 	def unschedule_update(self, callback):
 		"""Cancela una actualización programada.
 		

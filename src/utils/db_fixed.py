@@ -49,16 +49,16 @@ class DatabaseManager:
 			conn: Conexión a la base de datos
 		"""
 		cursor = conn.cursor()
-
+		
 		# Migración: Cambiar id por upgrade_id en tabla upgrades
 		try:
 			# Verificar si la columna upgrade_id existe
 			cursor.execute("PRAGMA table_info(upgrades)")
 			columns = [row[1] for row in cursor.fetchall()]
-
+			
 			if 'id' in columns and 'upgrade_id' not in columns:
 				logging.info("Migrando tabla upgrades: id -> upgrade_id")
-
+				
 				# Crear tabla temporal con el nuevo esquema
 				cursor.execute("""
 					CREATE TABLE upgrades_new (
@@ -71,21 +71,21 @@ class DatabaseManager:
 						description TEXT
 					)
 				""")
-
+				
 				# Copiar datos de la tabla vieja a la nueva (usando name como upgrade_id)
 				cursor.execute("""
 					INSERT INTO upgrades_new (upgrade_id, name, level, base_cost, current_cost, unlocked, description)
 					SELECT name, name, level, base_cost, current_cost, unlocked, description
 					FROM upgrades
 				""")
-
+				
 				# Eliminar tabla vieja y renombrar la nueva
 				cursor.execute("DROP TABLE upgrades")
 				cursor.execute("ALTER TABLE upgrades_new RENAME TO upgrades")
-
+				
 				conn.commit()
 				logging.info("Migración de upgrades completada exitosamente")
-
+				
 		except Exception as e:
 			logging.error(f"Error en migración de upgrades: {e}")
 			# Si falla la migración, continuar con el esquema existente

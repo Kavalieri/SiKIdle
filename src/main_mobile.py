@@ -9,8 +9,8 @@ from kivy.app import App
 from kivy.config import Config
 from kivy.core.window import Window
 from kivy.uix.boxlayout import BoxLayout
-from kivy.uix.label import Label
 from kivy.uix.button import Button
+from kivy.uix.label import Label
 from kivy.utils import platform
 
 from utils.paths import ensure_directories
@@ -28,7 +28,7 @@ def configure_for_mobile():
 		Config.set('graphics', 'width', '360')   # Ancho típico de móvil
 		Config.set('graphics', 'height', '640')  # Alto típico de móvil
 		Config.set('graphics', 'resizable', True)
-	
+
 	# Configuraciones generales para móviles
 	Config.set('input', 'mouse', 'mouse,multitouch_on_demand')
 	Config.write()
@@ -36,7 +36,7 @@ def configure_for_mobile():
 
 class SiKIdleApp(App):
 	"""Aplicación principal de SiKIdle optimizada para móviles."""
-	
+
 	def build(self):
 		"""Construye la interfaz principal del juego.
 		
@@ -48,7 +48,7 @@ class SiKIdleApp(App):
 
 		# Layout principal optimizado para móviles
 		root = BoxLayout(
-			orientation='vertical', 
+			orientation='vertical',
 			padding=[20, 40, 20, 20],  # top padding mayor para móviles
 			spacing=20
 		)
@@ -95,15 +95,15 @@ class SiKIdleApp(App):
 		root.add_widget(device_info)
 
 		return root
-	
+
 	def on_test_button_press(self, instance):
 		"""Maneja el evento de presionar el botón de prueba."""
 		instance.text = '¡Funciona perfectamente!'
-	
+
 	def get_application_name(self):
 		"""Obtiene el nombre de la aplicación."""
 		return 'SiKIdle'
-	
+
 	def get_application_icon(self):
 		"""Obtiene el icono de la aplicación."""
 		return ''
@@ -113,7 +113,7 @@ def main():
 	"""Función principal de entrada del juego."""
 	# Configurar para móviles antes de crear la app
 	configure_for_mobile()
-	
+
 	# Crear y ejecutar la aplicación
 	app = SiKIdleApp()
 	app.title = 'SiKIdle - Mobile Idle Clicker'

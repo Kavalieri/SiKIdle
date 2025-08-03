@@ -21,7 +21,7 @@ from utils.paths import ensure_directories
 
 class SiKIdleApp(App):
 	"""Aplicación principal de SiKIdle optimizada para móviles."""
-	
+
 	def build(self):
 		"""Construye la interfaz principal del juego.
 		
@@ -93,18 +93,18 @@ class SiKIdleApp(App):
 	def on_test_button_press(self, instance: Button) -> None:
 		"""Maneja el evento de presionar el botón de prueba."""
 		instance.text = '¡Funciona perfectamente!'
-	
+
 	def get_application_name(self) -> str:
 		"""Obtiene el nombre de la aplicación."""
 		return 'SiKIdle'
-	
+
 	def get_application_icon(self) -> str:
 		"""Obtiene el icono de la aplicación."""
 		return ''
 
 
 def main() -> None:
-	"""Función principal de entrada del juego."""	
+	"""Función principal de entrada del juego."""
 	# Crear y ejecutar la aplicación
 	app = SiKIdleApp()
 	app.title = 'SiKIdle - Mobile Idle Clicker'
