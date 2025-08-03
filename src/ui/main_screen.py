@@ -1,0 +1,326 @@
+"""Pantalla principal del juego SiKIdle.
+
+Contiene el botón de clic principal, contador de monedas,
+área de mejoras y espacios para anuncios.
+"""
+
+from kivy.uix.boxlayout import BoxLayout  # type: ignore
+from kivy.uix.button import Button  # type: ignore
+from kivy.uix.label import Label  # type: ignore
+from kivy.clock import Clock  # type: ignore
+from kivy.animation import Animation  # type: ignore
+import logging
+import math
+from typing import Any
+
+from ui.screen_manager import SiKIdleScreen
+from core.game import get_game_state
+
+
+class MainScreen(SiKIdleScreen):
+	"""Pantalla principal del juego donde ocurre toda la acción."""
+	
+	def __init__(self, **kwargs: Any):
+		"""Inicializa la pantalla principal del juego."""
+		super().__init__(**kwargs)
+		
+		self.game_state = get_game_state()
+		self.update_scheduled = False
+		
+		# Referencias a widgets para actualización
+		self.coins_label = None
+		self.click_button = None
+		self.multiplier_label = None
+		self.bonus_label = None
+		self.ad_button = None
+		
+		self.build_ui()
+		
+	def build_ui(self):
+		"""Construye la interfaz de la pantalla principal."""
+		# Layout principal
+		main_layout = BoxLayout(
+			orientation='vertical',
+			padding=[20, 20, 20, 20],
+			spacing=15
+		)
+		
+		# Header con monedas y botón de volver
+		header = self.create_header()
+		main_layout.add_widget(header)
+		
+		# Área principal de juego
+		game_area = self.create_game_area()
+		main_layout.add_widget(game_area)
+		
+		# Área de mejoras y anuncios
+		bottom_area = self.create_bottom_area()
+		main_layout.add_widget(bottom_area)
+		
+		self.add_widget(main_layout)
+		
+		logging.info("Pantalla principal construida")
+	
+	def create_header(self) -> BoxLayout:
+		"""Crea el header con monedas y navegación.
+		
+		Returns:
+			BoxLayout con el header
+		"""
+		header = BoxLayout(
+			orientation='horizontal',
+			size_hint=(1, 0.1),
+			spacing=10
+		)
+		
+		# Botón volver
+		back_button = Button(
+			text='← Menú',
+			font_size='16sp',
+			size_hint=(0.3, 1),
+			background_color=[0.6, 0.6, 0.6, 1]
+		)
+		back_button.bind(on_press=self.on_back_button)
+		header.add_widget(back_button)
+		
+		# Contador de monedas (centrado)
+		self.coins_label = Label(
+			text='💰 0 monedas',
+			font_size='24sp',
+			size_hint=(0.7, 1),
+			bold=True,
+			color=[1, 0.8, 0, 1]  # Dorado
+		)
+		header.add_widget(self.coins_label)
+		
+		return header
+	
+	def create_game_area(self) -> BoxLayout:
+		"""Crea el área principal de juego con el botón de clic.
+		
+		Returns:
+			BoxLayout con el área de juego
+		"""
+		game_area = BoxLayout(
+			orientation='vertical',
+			size_hint=(1, 0.6),
+			spacing=20
+		)
+		
+		# Información del multiplicador
+		self.multiplier_label = Label(
+			text='Multiplicador: x1.0',
+			font_size='18sp',
+			size_hint=(1, 0.15),
+			color=[0.8, 0.8, 1, 1]  # Azul claro
+		)
+		game_area.add_widget(self.multiplier_label)
+		
+		# Botón de clic principal (grande y centrado)
+		self.click_button = Button(
+			text='💎\n¡CLICK!',
+			font_size='32sp',
+			size_hint=(0.8, 0.7),
+			pos_hint={'center_x': 0.5},
+			background_color=[0.2, 0.8, 0.2, 1]  # Verde brillante
+		)
+		self.click_button.bind(on_press=self.on_click_button)
+		game_area.add_widget(self.click_button)
+		
+		# Label de bonificación activa
+		self.bonus_label = Label(
+			text='',
+			font_size='16sp',
+			size_hint=(1, 0.15),
+			color=[1, 0.6, 0, 1]  # Naranja
+		)
+		game_area.add_widget(self.bonus_label)
+		
+		return game_area
+	
+	def create_bottom_area(self) -> BoxLayout:
+		"""Crea el área inferior con mejoras y anuncios.
+		
+		Returns:
+			BoxLayout con el área inferior
+		"""
+		bottom_area = BoxLayout(
+			orientation='vertical',
+			size_hint=(1, 0.3),
+			spacing=10
+		)
+		
+		# Botones de acción en horizontal
+		action_buttons = BoxLayout(
+			orientation='horizontal',
+			size_hint=(1, 0.5),
+			spacing=10
+		)
+		
+		# Botón de mejoras
+		upgrades_button = Button(
+			text='⬆️ Mejoras',
+			font_size='18sp',
+			background_color=[0.8, 0.4, 0.8, 1]  # Púrpura
+		)
+		upgrades_button.bind(on_press=self.on_upgrades_button)
+		action_buttons.add_widget(upgrades_button)
+		
+		# Botón de anuncio con recompensa
+		self.ad_button = Button(
+			text='📺 Ver Anuncio\n(x2 monedas 30s)',
+			font_size='16sp',
+			background_color=[1, 0.6, 0, 1]  # Naranja
+		)
+		self.ad_button.bind(on_press=self.on_ad_button)
+		action_buttons.add_widget(self.ad_button)
+		
+		bottom_area.add_widget(action_buttons)
+		
+		# Espacio para banner publicitario inferior
+		banner_bottom = Label(
+			text='[ BANNER PUBLICITARIO INFERIOR ]',
+			font_size='12sp',
+			size_hint=(1, 0.5),
+			color=[0.5, 0.5, 0.5, 1]
+		)
+		bottom_area.add_widget(banner_bottom)
+		
+		return bottom_area
+	
+	def on_click_button(self, instance: Button):
+		"""Maneja el clic en el botón principal.
+		
+		Args:
+			instance: Instancia del botón presionado
+		"""
+		# Procesar clic en el juego
+		coins_earned = self.game_state.click()
+		
+		# Animar el botón para feedback visual
+		self.animate_click_button()
+		
+		# Actualizar interfaz inmediatamente
+		self.update_ui()
+		
+		logging.debug(f"Clic procesado: +{coins_earned} monedas")
+	
+	def animate_click_button(self):
+		"""Anima el botón de clic para feedback visual."""
+		if self.click_button:
+			# Animación de escala (crecer y volver)
+			anim = Animation(size_hint=(0.85, 0.75), duration=0.1) + Animation(size_hint=(0.8, 0.7), duration=0.1)
+			anim.start(self.click_button)
+	
+	def on_ad_button(self, instance: Button):
+		"""Maneja el clic en el botón de anuncio.
+		
+		Args:
+			instance: Instancia del botón presionado
+		"""
+		# TODO: AdMob integration here - Mostrar anuncio real
+		
+		# Por ahora simular que el anuncio se vio correctamente
+		success = self.game_state.apply_ad_bonus(multiplier=2.0, duration=30)
+		
+		if success:
+			instance.text = '📺 Anuncio visto\n¡Bonificación activa!'
+			instance.background_color = [0.2, 0.8, 0.2, 1]  # Verde
+			
+			# Deshabilitar botón temporalmente
+			instance.disabled = True
+			
+			# Programar reactivación
+			Clock.schedule_once(lambda dt: self.reactivate_ad_button(), 30)
+			
+			logging.info("Bonificación x2 aplicada por 30 segundos")
+		else:
+			logging.warning("No se pudo aplicar la bonificación de anuncio")
+	
+	def reactivate_ad_button(self):
+		"""Reactiva el botón de anuncio después de la bonificación."""
+		if self.ad_button:
+			self.ad_button.text = '📺 Ver Anuncio\n(x2 monedas 30s)'
+			self.ad_button.background_color = [1, 0.6, 0, 1]  # Naranja
+			self.ad_button.disabled = False
+			logging.info("Botón de anuncio reactivado")
+	
+	def on_upgrades_button(self, instance: Button):
+		"""Maneja el clic en el botón de mejoras.
+		
+		Args:
+			instance: Instancia del botón presionado
+		"""
+		logging.info("Navegando a pantalla de mejoras")
+		self.navigate_to('upgrades')
+	
+	def on_back_button(self, instance: Button):
+		"""Maneja el clic en el botón de volver.
+		
+		Args:
+			instance: Instancia del botón presionado
+		"""
+		logging.info("Volviendo al menú principal")
+		self.navigate_to('start')
+	
+	def update_ui(self, dt: float = 0):
+		"""Actualiza la interfaz con los datos actuales del juego.
+		
+		Args:
+			dt: Delta time (no usado)
+		"""
+		stats = self.game_state.get_game_stats()
+		
+		# Actualizar contador de monedas
+		if self.coins_label:
+			self.coins_label.text = f"💰 {stats['coins']:,} monedas"
+		
+		# Actualizar multiplicador
+		if self.multiplier_label:
+			current_mult = stats['current_multiplier']
+			if current_mult > stats['multiplier']:
+				self.multiplier_label.text = f"Multiplicador: x{current_mult:.1f} (¡BONUS!)"
+				self.multiplier_label.color = [1, 0.6, 0, 1]  # Naranja para bonus
+			else:
+				self.multiplier_label.text = f"Multiplicador: x{current_mult:.1f}"
+				self.multiplier_label.color = [0.8, 0.8, 1, 1]  # Azul normal
+		
+		# Actualizar estado de bonificación
+		if self.bonus_label:
+			if stats['bonus_active']:
+				remaining = math.ceil(stats['bonus_time_remaining'])
+				self.bonus_label.text = f"🔥 ¡BONIFICACIÓN ACTIVA! {remaining}s restantes"
+			else:
+				self.bonus_label.text = ''
+	
+	def on_enter(self, *args):
+		"""Método llamado cuando se entra a la pantalla."""
+		super().on_enter(*args)
+		
+		# Iniciar el juego si no está corriendo
+		if not self.game_state.game_running:
+			self.game_state.start_game()
+		
+		# Programar actualización de UI
+		if not self.update_scheduled:
+			Clock.schedule_interval(self.update_ui, 1.0)  # Actualizar cada segundo
+			self.update_scheduled = True
+		
+		# Actualizar UI inmediatamente
+		self.update_ui()
+		
+		logging.info("Entrada a pantalla principal de juego")
+	
+	def on_leave(self, *args):
+		"""Método llamado cuando se sale de la pantalla."""
+		super().on_leave(*args)
+		
+		# Cancelar actualización de UI
+		if self.update_scheduled:
+			Clock.unschedule(self.update_ui)
+			self.update_scheduled = False
+		
+		# No detener el juego aquí, solo pausar la UI
+		# El juego sigue corriendo en background
+		
+		logging.info("Salida de pantalla principal de juego")

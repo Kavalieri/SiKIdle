@@ -139,10 +139,12 @@ El proyecto actualmente cuenta con:
 
 ### Configuración Móvil Específica ✅
 - ✅ **Orientación portrait forzada**
-- ✅ **Resolución móvil (360x640 en desarrollo)**
+- ✅ **Ventana FIJA no redimensionable (360x640 en desktop)**
+- ✅ **Posición consistente para desarrollo**
 - ✅ **Fuentes escalables (sp units)**
 - ✅ **Padding optimizado para touch**
 - ✅ **Buildozer configurado para Android API 21-34**
+- ✅ **Simulación móvil perfecta en desktop**
 
 ## 🤝 Contribución
 

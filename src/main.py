@@ -1,128 +1,201 @@
-"""SiKIdle - Videojuego tipo idle clicker 2D.
+"""Archivo principal de SiKIdle.
 
-Punto de entrada principal del juego.
-Desarrollado en Python con Kivy, orientado principalmente a Android.
-Optimizado para pantallas verticales (móviles).
+Inicializa la aplicación Kivy e integra todas las pantallas
+del juego para crear la experiencia completa de idle clicker.
 """
 
-from kivy.app import App
-from kivy.config import Config
-from kivy.uix.boxlayout import BoxLayout
-from kivy.uix.button import Button
-from kivy.uix.label import Label
-from kivy.utils import platform
+import os
+import sys
+import logging
+from typing import Optional
 
-from utils.paths import ensure_directories
+# Configurar logging antes de importar Kivy
+logging.basicConfig(
+	level=logging.INFO,
+	format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+	handlers=[
+		logging.StreamHandler(sys.stdout),
+		logging.FileHandler('sikidle.log', encoding='utf-8')
+	]
+)
 
+# Configurar Kivy para móvil antes de importar
+os.environ['KIVY_WINDOW'] = 'sdl2'
+os.environ['KIVY_GL_BACKEND'] = 'gl'
 
-# Configuración para móviles antes de importar otros módulos de Kivy
-def configure_for_mobile():
-	"""Configura la aplicación para dispositivos móviles."""
-	# Configuración específica para Android/móviles
-	if platform == 'android':
-		# En Android, la ventana se ajusta automáticamente
-		pass
-	else:
-		# En desktop, simular una pantalla móvil vertical FIJA
-		Config.set('graphics', 'width', '360')   # Ancho típico de móvil
-		Config.set('graphics', 'height', '640')  # Alto típico de móvil
-		Config.set('graphics', 'resizable', False)  # Ventana NO redimensionable
-		Config.set('graphics', 'borderless', False)  # Mantener borde para desarrollo
-		Config.set('graphics', 'position', 'custom')  # Posición personalizada
-		Config.set('graphics', 'left', '100')  # Posición desde la izquierda
-		Config.set('graphics', 'top', '100')   # Posición desde arriba
-	
-	# Configuraciones generales para móviles
-	Config.set('input', 'mouse', 'mouse,multitouch_on_demand')
-	Config.write()
+# Importar Kivy después de configuración
+from kivy.app import App  # type: ignore
+from kivy.uix.screenmanager import ScreenManager  # type: ignore
+from kivy.clock import Clock  # type: ignore
+from kivy.logger import Logger  # type: ignore
+
+# Importar componentes del juego
+from utils.mobile_config import setup_mobile_environment
+from utils.save import get_save_manager
+from core.game import get_game_state
+from ui.loading_screen import LoadingScreen
+from ui.start_screen import StartScreen
+from ui.main_screen import MainScreen
+from ui.settings_screen import SettingsScreen
+from ui.stats_screen import StatsScreen
+from ui.upgrades_screen import UpgradesScreen
 
 
 class SiKIdleApp(App):
-	"""Aplicación principal de SiKIdle optimizada para móviles."""
+	"""Aplicación principal de SiKIdle."""
+	
+	def __init__(self, **kwargs):
+		"""Inicializa la aplicación."""
+		super().__init__(**kwargs)
+		
+		self.title = 'SiKIdle - Idle Clicker'
+		self.icon = 'assets/icon.png'  # TODO: Crear icono
+		
+		# Referencias a componentes principales
+		self.save_manager: Optional[object] = None
+		self.game_state: Optional[object] = None
+		self.screen_manager: Optional[ScreenManager] = None
 	
 	def build(self):
-		"""Construye la interfaz principal del juego.
+		"""Construye la aplicación principal.
 		
 		Returns:
-			Widget: Widget raíz de la aplicación
+			ScreenManager: Gestor de pantallas principal
 		"""
-		# Asegurar que existen los directorios necesarios
-		ensure_directories()
-
-		# Layout principal optimizado para móviles
-		root = BoxLayout(
-			orientation='vertical',
-			padding=[20, 40, 20, 20],  # top padding mayor para móviles
-			spacing=20
-		)
-
-		# Título del juego - más grande para móviles
-		title_label = Label(
-			text='SiKIdle',
-			font_size='48sp',  # Más grande para pantallas móviles
-			size_hint=(1, 0.2),
-			halign='center'
-		)
-
-		# Mensaje de bienvenida
-		welcome_label = Label(
-			text='¡Bienvenido a SiKIdle!\n\nJuego idle clicker para móviles\nOptimizado para pantallas verticales',
-			font_size='20sp',
-			size_hint=(1, 0.4),
-			halign='center',
-			valign='middle'
-		)
-		# Configurar text_size usando ancho fijo móvil (320 píxeles para dejar margen)
-		welcome_label.text_size = (320, None)
-
-		# Botón de prueba para interacción táctil
-		test_button = Button(
-			text='¡Toca para comenzar!',
-			size_hint=(0.8, None),
-			height='60dp',  # Altura fija para botones móviles
-			pos_hint={'center_x': 0.5},
-			font_size='24sp'
-		)
-		test_button.bind(on_press=self.on_test_button_press)
-
-		# Información del dispositivo con debug de ventana
-		device_info_text = f'Plataforma: {platform}\nOptimizado para: Android/Móviles\nVentana: FIJA 360x640px (no redimensionable)'
-		device_info = Label(
-			text=device_info_text,
-			font_size='14sp',
-			size_hint=(1, 0.1),
-			halign='center'
-		)
-
-		root.add_widget(title_label)
-		root.add_widget(welcome_label)
-		root.add_widget(test_button)
-		root.add_widget(device_info)
-
-		return root
-
-	def on_test_button_press(self, instance):
-		"""Maneja el evento de presionar el botón de prueba."""
-		instance.text = '¡Funciona perfectamente!'
+		try:
+			# Configurar entorno móvil
+			setup_mobile_environment()
+			
+			# Inicializar componentes principales
+			self.save_manager = get_save_manager()
+			self.game_state = get_game_state()
+			
+			# Crear gestor de pantallas
+			self.screen_manager = ScreenManager()
+			
+			# Crear y agregar todas las pantallas
+			self.create_screens()
+			
+			# Configurar pantalla inicial
+			self.screen_manager.current = 'loading'
+			
+			# Iniciar sistemas de guardado
+			self.save_manager.start_auto_save()
+			
+			logging.info("SiKIdle iniciado correctamente")
+			return self.screen_manager
+			
+		except Exception as e:
+			logging.error(f"Error inicializando aplicación: {e}")
+			raise
 	
-	def get_application_name(self):
-		"""Obtiene el nombre de la aplicación."""
-		return 'SiKIdle'
+	def create_screens(self):
+		"""Crea y registra todas las pantallas del juego."""
+		try:
+			# Pantalla de carga
+			loading_screen = LoadingScreen(name='loading')
+			self.screen_manager.add_widget(loading_screen)
+			
+			# Pantalla de inicio
+			start_screen = StartScreen(name='start')
+			self.screen_manager.add_widget(start_screen)
+			
+			# Pantalla principal del juego
+			main_screen = MainScreen(name='main')
+			self.screen_manager.add_widget(main_screen)
+			
+			# Pantalla de configuración
+			settings_screen = SettingsScreen(name='settings')
+			self.screen_manager.add_widget(settings_screen)
+			
+			# Pantalla de estadísticas
+			stats_screen = StatsScreen(name='stats')
+			self.screen_manager.add_widget(stats_screen)
+			
+			# Pantalla de mejoras
+			upgrades_screen = UpgradesScreen(name='upgrades')
+			self.screen_manager.add_widget(upgrades_screen)
+			
+			logging.info("Todas las pantallas creadas correctamente")
+			
+		except Exception as e:
+			logging.error(f"Error creando pantallas: {e}")
+			raise
 	
-	def get_application_icon(self):
-		"""Obtiene el icono de la aplicación."""
-		return ''
+	def on_start(self):
+		"""Método llamado cuando la aplicación inicia."""
+		try:
+			# Cargar datos guardados
+			if self.save_manager:
+				self.save_manager.load_game_state()
+			
+			logging.info("Aplicación iniciada - datos cargados")
+			
+		except Exception as e:
+			logging.error(f"Error en inicio de aplicación: {e}")
+	
+	def on_pause(self):
+		"""Método llamado cuando la aplicación se pausa (Android).
+		
+		Returns:
+			True para permitir pausar la aplicación
+		"""
+		try:
+			# Guardar estado antes de pausar
+			if self.save_manager:
+				self.save_manager.force_save()
+			
+			logging.info("Aplicación pausada - estado guardado")
+			return True
+			
+		except Exception as e:
+			logging.error(f"Error pausando aplicación: {e}")
+			return True
+	
+	def on_resume(self):
+		"""Método llamado cuando la aplicación se reanuda (Android)."""
+		try:
+			# Recargar estado al reanudar
+			if self.save_manager:
+				self.save_manager.load_game_state()
+			
+			logging.info("Aplicación reanudada - estado recargado")
+			
+		except Exception as e:
+			logging.error(f"Error reanudando aplicación: {e}")
+	
+	def on_stop(self):
+		"""Método llamado cuando la aplicación se cierra."""
+		try:
+			# Detener guardado automático
+			if self.save_manager:
+				self.save_manager.stop_auto_save()
+				self.save_manager.force_save()
+			
+			logging.info("Aplicación cerrada - estado final guardado")
+			
+		except Exception as e:
+			logging.error(f"Error cerrando aplicación: {e}")
 
 
 def main():
-	"""Función principal de entrada del juego."""
-	# Configurar para móviles antes de crear la app
-	configure_for_mobile()
-	
-	# Crear y ejecutar la aplicación
-	app = SiKIdleApp()
-	app.title = 'SiKIdle - Mobile Idle Clicker'
-	app.run()
+	"""Función principal para ejecutar el juego."""
+	try:
+		# Configurar logging específico para esta sesión
+		logger = logging.getLogger(__name__)
+		logger.info("Iniciando SiKIdle...")
+		
+		# Crear y ejecutar aplicación
+		app = SiKIdleApp()
+		app.run()
+		
+	except KeyboardInterrupt:
+		logging.info("Aplicación cerrada por usuario")
+	except Exception as e:
+		logging.error(f"Error fatal en aplicación: {e}")
+		raise
+	finally:
+		logging.info("SiKIdle finalizado")
 
 
 if __name__ == '__main__':
