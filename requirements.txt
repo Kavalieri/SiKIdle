@@ -1,0 +1,18 @@
+# Dependencias principales
+kivy>=2.3.0
+sqlite3  # incorporado en la stdlib de Python
+
+# Testing
+pytest>=7.2.0
+pytest-cov>=4.0.0
+pytest-mock>=3.10.0
+pytest-asyncio>=0.20.0
+pytest-xdist>=3.3.0
+
+# Herramientas de análisis estático
+ruff>=0.4.4
+mypy>=1.10.0
+
+# Extras conocidos por otros proyectos previos
+pygame-ce>=2.4.0
+pygame-gui>=0.6.9

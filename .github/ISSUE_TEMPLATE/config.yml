@@ -1,0 +1,11 @@
+blank_issues_enabled: false
+contact_links:
+  - name: 🚀 Descargar Juego
+    url: https://github.com/Kavalieri/SiK-Python-Game/releases/latest
+    about: Descarga la última versión del juego
+  - name: 📚 Documentación
+    url: https://github.com/Kavalieri/SiK-Python-Game/blob/main/docs/README.md
+    about: Consulta la documentación técnica completa
+  - name: 🤝 Guía de Contribución
+    url: https://github.com/Kavalieri/SiK-Python-Game/blob/main/CONTRIBUTING.md
+    about: Aprende cómo contribuir al proyecto
