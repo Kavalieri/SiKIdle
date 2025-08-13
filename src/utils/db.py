@@ -23,13 +23,13 @@ class DatabaseManager:
 
 	def _get_database_path(self) -> Path:
 		"""Obtiene la ruta completa del archivo de base de datos.
-		
+
 		Returns:
 			Path: Ruta al archivo sikidle.db
 		"""
-		savegames_dir = get_user_data_dir() / 'savegames'
+		savegames_dir = get_user_data_dir() / "savegames"
 		savegames_dir.mkdir(parents=True, exist_ok=True)
-		return savegames_dir / 'sikidle.db'
+		return savegames_dir / "sikidle.db"
 
 	def _ensure_database_exists(self) -> None:
 		"""Asegura que la base de datos existe y tiene las tablas necesarias."""
@@ -44,7 +44,7 @@ class DatabaseManager:
 
 	def _run_migrations(self, conn: sqlite3.Connection) -> None:
 		"""Ejecuta migraciones necesarias para actualizar el esquema de base de datos.
-		
+
 		Args:
 			conn: Conexión a la base de datos
 		"""
@@ -56,7 +56,7 @@ class DatabaseManager:
 			cursor.execute("PRAGMA table_info(upgrades)")
 			columns = [row[1] for row in cursor.fetchall()]
 
-			if 'id' in columns and 'upgrade_id' not in columns:
+			if "id" in columns and "upgrade_id" not in columns:
 				logging.info("Migrando tabla upgrades: id -> upgrade_id")
 
 				# Crear tabla temporal con el nuevo esquema
@@ -93,7 +93,7 @@ class DatabaseManager:
 
 	def _create_tables(self, conn: sqlite3.Connection) -> None:
 		"""Crea todas las tablas necesarias si no existen.
-		
+
 		Args:
 			conn: Conexión a la base de datos
 		"""
@@ -151,7 +151,7 @@ class DatabaseManager:
 	@contextmanager
 	def get_connection(self):
 		"""Context manager para obtener conexión a la base de datos.
-		
+
 		Yields:
 			sqlite3.Connection: Conexión a la base de datos
 		"""
@@ -171,11 +171,11 @@ class DatabaseManager:
 
 	def execute_query(self, query: str, params: tuple = ()) -> list:
 		"""Ejecuta una consulta SELECT y retorna los resultados.
-		
+
 		Args:
 			query: Consulta SQL a ejecutar
 			params: Parámetros para la consulta
-			
+
 		Returns:
 			Lista de resultados
 		"""
@@ -186,7 +186,7 @@ class DatabaseManager:
 
 	def execute_update(self, query: str, params: tuple = ()) -> None:
 		"""Ejecuta una consulta UPDATE/INSERT/DELETE.
-		
+
 		Args:
 			query: Consulta SQL a ejecutar
 			params: Parámetros para la consulta
@@ -198,20 +198,20 @@ class DatabaseManager:
 
 	def execute(self, query: str, params: tuple = ()) -> list:
 		"""Método genérico execute para compatibilidad.
-		
+
 		Args:
 			query: Consulta SQL a ejecutar
 			params: Parámetros para la consulta
-			
+
 		Returns:
 			Lista de resultados para SELECT, lista vacía para otros
 		"""
 		with self.get_connection() as conn:
 			cursor = conn.cursor()
 			cursor.execute(query, params)
-			
+
 			# Si es SELECT, retornar resultados
-			if query.strip().upper().startswith('SELECT'):
+			if query.strip().upper().startswith("SELECT"):
 				return cursor.fetchall()
 			else:
 				# Para INSERT/UPDATE/DELETE, hacer commit
@@ -220,7 +220,7 @@ class DatabaseManager:
 
 	def get_player_data(self) -> dict[str, Any]:
 		"""Obtiene todos los datos del jugador.
-		
+
 		Returns:
 			Diccionario con los datos del jugador
 		"""
@@ -228,134 +228,135 @@ class DatabaseManager:
 		if result:
 			row = result[0]
 			return {
-				'coins': row['coins'],
-				'total_clicks': row['total_clicks'],
-				'multiplier': row['multiplier'],
-				'last_saved': row['last_saved'],
-				'total_playtime': row['total_playtime']
+				"coins": row["coins"],
+				"total_clicks": row["total_clicks"],
+				"multiplier": row["multiplier"],
+				"last_saved": row["last_saved"],
+				"total_playtime": row["total_playtime"],
 			}
 		return {
-			'coins': 0,
-			'total_clicks': 0,
-			'multiplier': 1.0,
-			'last_saved': '',
-			'total_playtime': 0
+			"coins": 0,
+			"total_clicks": 0,
+			"multiplier": 1.0,
+			"last_saved": "",
+			"total_playtime": 0,
 		}
 
-	def update_player_data(self, coins: int, total_clicks: int, multiplier: float) -> None:
+	def update_player_data(
+		self, coins: int, total_clicks: int, multiplier: float, total_playtime: int = 0
+	) -> None:
 		"""Actualiza los datos principales del jugador.
-		
+
 		Args:
 			coins: Cantidad de monedas
 			total_clicks: Total de clics realizados
 			multiplier: Multiplicador actual
+			total_playtime: Tiempo total jugado en segundos
 		"""
 		self.execute_update(
-			"UPDATE player SET coins = ?, total_clicks = ?, multiplier = ?, last_saved = CURRENT_TIMESTAMP WHERE id = 1",
-			(coins, total_clicks, multiplier)
+			"UPDATE player SET coins = ?, total_clicks = ?, multiplier = ?, total_playtime = ?, last_saved = CURRENT_TIMESTAMP WHERE id = 1",
+			(coins, total_clicks, multiplier, total_playtime),
 		)
 
-	def get_setting(self, key: str, default: str = '') -> str:
+	def get_setting(self, key: str, default: str = "") -> str:
 		"""Obtiene un valor de configuración.
-		
+
 		Args:
 			key: Clave de la configuración
 			default: Valor por defecto si no existe
-			
+
 		Returns:
 			Valor de la configuración
 		"""
 		result = self.execute_query("SELECT value FROM settings WHERE key = ?", (key,))
-		return result[0]['value'] if result else default
+		return result[0]["value"] if result else default
 
 	def set_setting(self, key: str, value: str) -> None:
 		"""Establece un valor de configuración.
-		
+
 		Args:
 			key: Clave de la configuración
 			value: Valor a establecer
 		"""
 		self.execute_update(
-			"INSERT OR REPLACE INTO settings (key, value) VALUES (?, ?)",
-			(key, value)
+			"INSERT OR REPLACE INTO settings (key, value) VALUES (?, ?)", (key, value)
 		)
 
 	def get_stat(self, key: str) -> int:
 		"""Obtiene una estadística del juego.
-		
+
 		Args:
 			key: Clave de la estadística
-			
+
 		Returns:
 			Valor de la estadística
 		"""
 		result = self.execute_query("SELECT value FROM stats WHERE key = ?", (key,))
-		return result[0]['value'] if result else 0
+		return result[0]["value"] if result else 0
 
 	def set_stat(self, key: str, value: int) -> None:
 		"""Establece una estadística del juego.
-		
+
 		Args:
 			key: Clave de la estadística
 			value: Valor a establecer
 		"""
-		self.execute_update(
-			"INSERT OR REPLACE INTO stats (key, value) VALUES (?, ?)",
-			(key, value)
-		)
+		self.execute_update("INSERT OR REPLACE INTO stats (key, value) VALUES (?, ?)", (key, value))
 
 	def increment_stat(self, key: str, amount: int = 1) -> None:
 		"""Incrementa una estadística del juego.
-		
+
 		Args:
 			key: Clave de la estadística
 			amount: Cantidad a incrementar
 		"""
 		self.execute_update(
 			"INSERT OR REPLACE INTO stats (key, value) VALUES (?, COALESCE((SELECT value FROM stats WHERE key = ?), 0) + ?)",
-			(key, key, amount)
+			(key, key, amount),
 		)
 
 	def get_upgrade_level(self, upgrade_id: str) -> int:
 		"""Obtiene el nivel actual de una mejora.
-		
+
 		Args:
 			upgrade_id: ID de la mejora
-			
+
 		Returns:
 			Nivel de la mejora (0 si no existe)
 		"""
-		result = self.execute_query("SELECT level FROM upgrades WHERE upgrade_id = ?", (upgrade_id,))
-		return result[0]['level'] if result else 0
+		result = self.execute_query(
+			"SELECT level FROM upgrades WHERE upgrade_id = ?", (upgrade_id,)
+		)
+		return result[0]["level"] if result else 0
 
 	def set_upgrade_level(self, upgrade_id: str, level: int) -> None:
 		"""Establece el nivel de una mejora.
-		
+
 		Args:
 			upgrade_id: ID de la mejora
 			level: Nuevo nivel
 		"""
 		self.execute_update(
-			"INSERT OR REPLACE INTO upgrades (upgrade_id, level) VALUES (?, ?)",
-			(upgrade_id, level)
+			"INSERT OR REPLACE INTO upgrades (upgrade_id, level) VALUES (?, ?)", (upgrade_id, level)
 		)
 
 	def get_all_upgrades(self) -> dict[str, int]:
 		"""Obtiene todos los niveles de mejoras.
-		
+
 		Returns:
 			Diccionario con upgrade_id: level
 		"""
 		result = self.execute_query("SELECT upgrade_id, level FROM upgrades")
-		return {row['upgrade_id']: row['level'] for row in result}
+		return {row["upgrade_id"]: row["level"] for row in result}
 
 
 # Instancia global del gestor de base de datos
 _db_manager: DatabaseManager | None = None
 
+
 def get_database() -> DatabaseManager:
 	"""Obtiene la instancia global del gestor de base de datos.
-	
+
 	Returns:
 		DatabaseManager: Instancia del gestor de base de datos
 	"""

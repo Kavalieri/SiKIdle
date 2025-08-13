@@ -17,6 +17,7 @@ from core.inventory import Inventory
 from core.dungeons import DungeonManager
 from core.combat import CombatManager
 from core.player_stats import PlayerStatsManager
+from core.equipment_manager import EquipmentManager
 
 
 class GameState:
@@ -37,6 +38,7 @@ class GameState:
 
 		# Sistema de logros para idle clicker
 		from core.achievements_idle import IdleAchievementManager
+
 		self.achievement_manager = IdleAchievementManager(self.save_manager.db)
 
 		# Sistema de inventario y loot
@@ -49,6 +51,9 @@ class GameState:
 		self.player = Player(stats_manager=self.player_stats)
 		self.combat_manager = CombatManager(self.player)
 		self.dungeon_manager = DungeonManager(self.resource_manager)
+
+		# Sistema de equipamiento
+		self.equipment_manager = EquipmentManager()
 
 		# Sistema de desbloqueo avanzado de mazmorras
 		from core.dungeon_unlock import DungeonUnlockManager
@@ -65,15 +70,17 @@ class GameState:
 			loot_generator=self.loot_generator,
 			inventory=self.inventory,
 			biome_manager=self.dungeon_manager.biome_manager,
+			game_state=self,  # Pasamos self para callbacks adicionales
 		)
 
-		# Configurar callback para registro de derrotas de enemigos
-		self.combat_manager.set_enemy_defeat_callback(self.register_enemy_defeat)
+		# NOTA: No sobreescribir el callback del loot_combat_integration
+		# El LootCombatIntegration ya maneja su propio callback automáticamente
 
 		# Sistema de prestigio integrado
 		from core.prestige_simple import PrestigeManager
+
 		self.prestige_manager = PrestigeManager(self.save_manager.db)
-		
+
 		# Mantener compatibilidad con variables existentes
 		self.prestige_crystals = 0
 		self.total_prestiges = 0
@@ -115,41 +122,54 @@ class GameState:
 
 		# Sistema de optimización de performance
 		from utils.performance import get_performance_optimizer
+
 		self.performance_optimizer = get_performance_optimizer()
-		
+
 		# Sistema de flujo de gameplay tradicional
 		from core.gameplay_flow import GameplayFlowManager
+
 		self.gameplay_flow = GameplayFlowManager(self)
-		
+
 		# Sistema de balanceo para estancamiento natural
 		from core.balance_manager import BalanceManager
+
 		self.balance_manager = BalanceManager(self)
-		
+
 		# Sistema de integración Combat-Idle
 		from core.combat_idle_integration import CombatIdleIntegration
+
 		self.combat_idle_integration = CombatIdleIntegration(self)
-		
+
 		# Sistema de tienda premium
 		from core.premium_shop import PremiumShopManager
+
 		self.premium_shop = PremiumShopManager(self)
-		
+
 		# Sistema de engagement y retención
 		from core.engagement_system import EngagementSystem
+
 		self.engagement_system = EngagementSystem(self)
-		
+
 		# Optimización móvil
-		from utils.mobile_optimization import mobile_optimizer, animation_manager, performance_monitor
+		from utils.mobile_optimization import (
+			mobile_optimizer,
+			animation_manager,
+			performance_monitor,
+		)
+
 		self.mobile_optimizer = mobile_optimizer
 		self.animation_manager = animation_manager
 		self.mobile_performance_monitor = performance_monitor
-		
+
 		# Cargar estado guardado
 		self.load_game()
-		
+
 		# Sincronizar datos de prestigio con el manager
 		self._sync_prestige_data()
 
-		logging.info("Juego inicializado: %d monedas, %d clics totales", self.coins, self.total_clicks)
+		logging.info(
+			"Juego inicializado: %d monedas, %d clics totales", self.coins, self.total_clicks
+		)
 
 	def start_game(self) -> None:
 		"""Inicia el juego y comienza el guardado automático."""
@@ -163,17 +183,20 @@ class GameState:
 
 		# Iniciar producción automática de edificios
 		from kivy.clock import Clock
+
 		Clock.schedule_interval(self._auto_collect_buildings, 1.0)  # Cada segundo
-		
+
 		# Iniciar verificación periódica de achievements
 		Clock.schedule_interval(self._check_achievements_periodic, 3.0)  # Cada 3 segundos
-		
+
 		# Verificar login diario y aplicar ganancias offline
 		self.engagement_system.check_daily_login()
 		offline_earnings = self.engagement_system.apply_offline_earnings()
-		if offline_earnings['coins'] > 0:
-			logging.info(f"Offline earnings: {offline_earnings['coins']} coins ({offline_earnings['hours_away']:.1f}h away)")
-		
+		if offline_earnings["coins"] > 0:
+			logging.info(
+				f"Offline earnings: {offline_earnings['coins']} coins ({offline_earnings['hours_away']:.1f}h away)"
+			)
+
 		# Iniciar actualización de metas diarias
 		Clock.schedule_interval(self._update_daily_goals, 30.0)  # Cada 30 segundos
 
@@ -181,84 +204,84 @@ class GameState:
 		self.save_manager.increment_stat("sessions_played", 1)
 
 		logging.info("Juego iniciado")
-	
+
 	def _auto_collect_buildings(self, dt):
 		"""Recolecta automáticamente la producción de edificios (optimizado)."""
 		if not self.game_running:
 			return False  # Detener el clock
-		
+
 		# Usar optimizador de performance
 		produced = self.performance_optimizer.optimize_building_production(
 			self.building_manager, dt
 		)
-		
-		if produced and produced.get('coins', 0) > 0:
-			coins_produced = produced['coins']
+
+		if produced and produced.get("coins", 0) > 0:
+			coins_produced = produced["coins"]
 			# Sincronizar con el sistema tradicional de monedas
 			self.coins += int(coins_produced)
-			
+
 			# Solo log si es significativo y no muy frecuente
-			if coins_produced > 1.0 and self.performance_optimizer.should_update_ui('low'):
+			if coins_produced > 1.0 and self.performance_optimizer.should_update_ui("low"):
 				logging.debug(f"Producción: +{coins_produced:.1f} monedas (Total: {self.coins:,})")
-		
+
 		# Registrar frame para monitoreo
 		self.performance_optimizer.record_frame()
-		
+
 		return True  # Continuar el clock
-	
+
 	def _check_achievements_periodic(self, dt):
 		"""Verifica achievements periódicamente (optimizado)."""
 		if not self.game_running:
 			return False  # Detener el clock
-		
+
 		try:
 			# Usar optimizador para verificación eficiente
 			completed_ids = self.performance_optimizer.optimize_achievement_check(
 				self.achievement_manager, self
 			)
-			
+
 			if completed_ids:
 				for achievement_id in completed_ids:
 					achievement = self.achievement_manager.achievements[achievement_id]
 					logging.info(f"🏆 Achievement unlocked: {achievement.name}")
-					
+
 					# Aplicar recompensas inmediatas
 					if achievement.reward.coins_reward > 0:
 						self.coins += achievement.reward.coins_reward
-					
+
 					# Guardar achievement
 					self.achievement_manager.save_achievement_data(achievement)
-					
+
 		except Exception as e:
 			logging.debug(f"Periodic achievement check error: {e}")
-		
+
 		# Ajustar performance cada 10 verificaciones
-		if hasattr(self, '_perf_check_count'):
+		if hasattr(self, "_perf_check_count"):
 			self._perf_check_count += 1
 		else:
 			self._perf_check_count = 1
-			
+
 		if self._perf_check_count % 10 == 0:
 			self.performance_optimizer.adjust_performance()
-			
+
 			# Actualizar flujo de gameplay cada 10 verificaciones
-			if hasattr(self, 'gameplay_flow'):
+			if hasattr(self, "gameplay_flow"):
 				self.gameplay_flow.update_phase()
-		
+
 		return True  # Continuar el clock
-	
+
 	def _update_daily_goals(self, dt):
 		"""Actualiza progreso de metas diarias."""
 		if not self.game_running:
 			return False
-		
+
 		try:
 			newly_completed = self.engagement_system.update_daily_goals()
 			for goal in newly_completed:
 				logging.info(f"🎯 Daily goal completed: {goal.name}")
 		except Exception as e:
 			logging.debug(f"Daily goals update error: {e}")
-		
+
 		return True
 
 	def stop_game(self) -> None:
@@ -275,13 +298,16 @@ class GameState:
 		# Detener guardado automático y guardar una vez más
 		self.save_manager.stop_auto_save()
 		self.save_game()
-		
+
 		# Limpiar optimizador de performance
-		if hasattr(self, 'performance_optimizer'):
+		if hasattr(self, "performance_optimizer"):
 			self.performance_optimizer.cleanup()
 
 		logging.info(
-			"Juego detenido. Sesión: %ds, Clics: %d, Monedas: %d", session_time, self.session_clicks, self.session_coins
+			"Juego detenido. Sesión: %ds, Clics: %d, Monedas: %d",
+			session_time,
+			self.session_clicks,
+			self.session_coins,
 		)
 
 	def click(self) -> int:
@@ -301,27 +327,31 @@ class GameState:
 		upgrade_multiplier = self.upgrade_manager.get_click_multiplier()
 
 		# Aplicar multiplicador de prestigio desde el manager
-		prestige_multiplier = self.prestige_manager.get_multipliers()['click_multiplier']
+		prestige_multiplier = self.prestige_manager.get_multipliers()["click_multiplier"]
 
 		# Aplicar multiplicadores de talentos
 		talent_click_multiplier = self.talent_multipliers["click_income"]
-		
+
 		# Aplicar multiplicadores de achievements
 		achievement_multipliers = self.achievement_manager.get_achievement_multipliers()
-		achievement_click_multiplier = achievement_multipliers['click_multiplier']
-		
+		achievement_click_multiplier = achievement_multipliers["click_multiplier"]
+
 		# Aplicar multiplicadores de combat
 		combat_multipliers = self.combat_idle_integration.get_active_multipliers()
-		combat_click_multiplier = combat_multipliers['click_multiplier']
-		
+		combat_click_multiplier = combat_multipliers["click_multiplier"]
+
 		# Aplicar multiplicadores premium
 		premium_multipliers = self.premium_shop.get_active_multipliers()
-		premium_click_multiplier = premium_multipliers['click_multiplier']
+		premium_click_multiplier = premium_multipliers["click_multiplier"]
 
 		total_multiplier = (
-			current_multiplier * upgrade_multiplier * prestige_multiplier * 
-			talent_click_multiplier * achievement_click_multiplier * 
-			combat_click_multiplier * premium_click_multiplier
+			current_multiplier
+			* upgrade_multiplier
+			* prestige_multiplier
+			* talent_click_multiplier
+			* achievement_click_multiplier
+			* combat_click_multiplier
+			* premium_click_multiplier
 		)
 
 		coins_earned = int(base_coins * total_multiplier)
@@ -373,13 +403,13 @@ class GameState:
 		achievement_multipliers = self.achievement_manager.get_achievement_multipliers()
 		combat_multipliers = self.combat_idle_integration.get_active_multipliers()
 		premium_multipliers = self.premium_shop.get_active_multipliers()
-		
+
 		# Combinar todos los multiplicadores
 		combined_multiplier = (
-			prestige_multipliers['building_multiplier'] * 
-			achievement_multipliers['building_multiplier'] *
-			combat_multipliers['building_multiplier'] *
-			premium_multipliers['building_multiplier']
+			prestige_multipliers["building_multiplier"]
+			* achievement_multipliers["building_multiplier"]
+			* combat_multipliers["building_multiplier"]
+			* premium_multipliers["building_multiplier"]
 		)
 		self.building_manager.set_prestige_multiplier(combined_multiplier)
 
@@ -481,8 +511,10 @@ class GameState:
 		# Verificar logros de edificios
 		total_buildings = 0
 		try:
-			total_buildings = sum(building.count for building in self.building_manager.buildings.values())
-			if hasattr(self.achievement_manager, 'check_building_achievements'):
+			total_buildings = sum(
+				building.count for building in self.building_manager.buildings.values()
+			)
+			if hasattr(self.achievement_manager, "check_building_achievements"):
 				self.achievement_manager.check_building_achievements(total_buildings)
 		except Exception as e:
 			logging.debug(f"Building achievement check error: {e}")
@@ -500,7 +532,7 @@ class GameState:
 			total_upgrades = sum(
 				1 for upgrade in self.upgrade_manager.upgrades.values() if upgrade.level > 0
 			)
-			if hasattr(self.achievement_manager, 'check_upgrade_achievements'):
+			if hasattr(self.achievement_manager, "check_upgrade_achievements"):
 				self.achievement_manager.check_upgrade_achievements(total_upgrades)
 		except Exception as e:
 			logging.debug(f"Upgrade achievement check error: {e}")
@@ -532,27 +564,28 @@ class GameState:
 			"coins_earned_today": self.save_manager.db.get_stat("coins_earned_today"),
 			"sessions_played": self.save_manager.db.get_stat("sessions_played"),
 		}
-		
+
 		# Añadir estadísticas de performance si está disponible
-		if hasattr(self, 'performance_optimizer'):
-			stats['performance'] = self.performance_optimizer.get_performance_stats()
-		
+		if hasattr(self, "performance_optimizer"):
+			stats["performance"] = self.performance_optimizer.get_performance_stats()
+
 		return stats
-	
+
 	def simulate_combat_victory(self, enemy_level: int = None) -> Dict[str, Any]:
 		"""Simula una victoria de combat para testing."""
-		if not hasattr(self, 'combat_idle_integration'):
-			return {'error': 'Combat integration not available'}
-		
+		if not hasattr(self, "combat_idle_integration"):
+			return {"error": "Combat integration not available"}
+
 		# Usar nivel basado en progreso si no se especifica
 		if enemy_level is None:
 			enemy_level = max(1, self.coins // 10000)  # 1 nivel por cada 10K monedas
-		
+
 		# Simular combat con performance aleatoria
 		import random
+
 		damage_dealt = enemy_level * random.uniform(80, 120)  # 80-120% del esperado
-		time_taken = enemy_level * random.uniform(3, 7)       # 3-7 segundos por nivel
-		
+		time_taken = enemy_level * random.uniform(3, 7)  # 3-7 segundos por nivel
+
 		return self.combat_idle_integration.process_combat_victory(
 			enemy_level, damage_dealt, time_taken
 		)
@@ -588,11 +621,21 @@ class GameState:
 			"total_talent_points_earned": self.total_talent_points_earned,
 			"talents": self.talents.copy(),
 			# Datos de combat y mazmorras
-			"combat_stats": self.player_stats.get_save_data() if hasattr(self.player_stats, 'get_save_data') else {},
-			"dungeon_progress": self.dungeon_manager.get_save_data() if hasattr(self.dungeon_manager, 'get_save_data') else {},
-			"inventory": self.inventory.get_save_data() if hasattr(self.inventory, 'get_save_data') else {},
+			"combat_stats": self.player_stats.get_save_data()
+			if hasattr(self.player_stats, "get_save_data")
+			else {},
+			"dungeon_progress": self.dungeon_manager.get_save_data()
+			if hasattr(self.dungeon_manager, "get_save_data")
+			else {},
+			"inventory": self.inventory.get_save_data()
+			if hasattr(self.inventory, "get_save_data")
+			else {},
+			# Datos de equipamiento
+			"equipment": self._get_equipment_save_data(),
 			# Datos de engagement
-			"engagement_data": self.engagement_system.get_engagement_stats() if hasattr(self, 'engagement_system') else {},
+			"engagement_data": self.engagement_system.get_engagement_stats()
+			if hasattr(self, "engagement_system")
+			else {},
 		}
 
 		return self.save_manager.save_game_state(game_state)
@@ -623,7 +666,7 @@ class GameState:
 		self.total_prestiges = saved_state.get("total_prestiges", 0)
 		self.lifetime_coins = saved_state.get("lifetime_coins", 0.0)
 		self.prestige_multiplier = saved_state.get("prestige_multiplier", 1.0)
-		
+
 		# Sincronizar con PrestigeManager si hay datos guardados
 		if self.prestige_crystals > 0 or self.total_prestiges > 0:
 			self.prestige_manager.prestige_crystals = self.prestige_crystals
@@ -644,30 +687,43 @@ class GameState:
 		self._update_talent_multipliers()
 
 		# Cargar datos de combat si existen
-		if "combat_stats" in saved_state and hasattr(self.player_stats, 'load_save_data'):
+		if "combat_stats" in saved_state and hasattr(self.player_stats, "load_save_data"):
 			try:
 				self.player_stats.load_save_data(saved_state["combat_stats"])
 			except Exception as e:
 				logging.warning(f"Error cargando stats de combat: {e}")
 
 		# Cargar progreso de mazmorras si existe
-		if "dungeon_progress" in saved_state and hasattr(self.dungeon_manager, 'load_save_data'):
+		if "dungeon_progress" in saved_state and hasattr(self.dungeon_manager, "load_save_data"):
 			try:
 				self.dungeon_manager.load_save_data(saved_state["dungeon_progress"])
 			except Exception as e:
 				logging.warning(f"Error cargando progreso de mazmorras: {e}")
 
 		# Cargar inventario si existe
-		if "inventory" in saved_state and hasattr(self.inventory, 'load_save_data'):
+		if "inventory" in saved_state and hasattr(self.inventory, "load_save_data"):
 			try:
 				self.inventory.load_save_data(saved_state["inventory"])
 			except Exception as e:
 				logging.warning(f"Error cargando inventario: {e}")
 
+		# Cargar equipamiento si existe
+		if "equipment" in saved_state:
+			try:
+				self._load_equipment_data(saved_state["equipment"])
+				logging.info("Equipamiento cargado exitosamente")
+			except Exception as e:
+				logging.warning(f"Error cargando equipamiento: {e}")
+
 		# Sincronizar coins con el sistema de recursos
 		self.resource_manager.set_resource(ResourceType.COINS, self.coins)
 
-		logging.info("Estado cargado: %d monedas, %d clics, nivel %d", self.coins, self.total_clicks, self.player_level)
+		logging.info(
+			"Estado cargado: %d monedas, %d clics, nivel %d",
+			self.coins,
+			self.total_clicks,
+			self.player_level,
+		)
 
 	def reset_game(self) -> None:
 		"""Reinicia el juego (para testing o reset completo)."""
@@ -690,20 +746,22 @@ class GameState:
 		try:
 			# Obtener stats del manager
 			stats = self.prestige_manager.get_stats()
-			
+
 			# Sincronizar variables de compatibilidad
-			self.prestige_crystals = stats['prestige_crystals']
-			self.total_prestiges = stats['prestige_count']
-			self.prestige_multiplier = stats['income_multiplier']
-			
+			self.prestige_crystals = stats["prestige_crystals"]
+			self.total_prestiges = stats["prestige_count"]
+			self.prestige_multiplier = stats["income_multiplier"]
+
 			# Sincronizar lifetime_coins si el manager tiene más
-			if stats['lifetime_coins'] > self.lifetime_coins:
-				self.lifetime_coins = stats['lifetime_coins']
+			if stats["lifetime_coins"] > self.lifetime_coins:
+				self.lifetime_coins = stats["lifetime_coins"]
 			else:
 				self.prestige_manager.lifetime_coins = self.lifetime_coins
-			
-			logging.debug(f"Datos de prestigio sincronizados: {stats['prestige_crystals']} cristales, {stats['prestige_count']} prestiges")
-			
+
+			logging.debug(
+				f"Datos de prestigio sincronizados: {stats['prestige_crystals']} cristales, {stats['prestige_count']} prestiges"
+			)
+
 		except Exception as e:
 			logging.error(f"Error sincronizando datos de prestigio: {e}")
 
@@ -731,20 +789,20 @@ class GameState:
 		"""
 		# Actualizar lifetime_coins con monedas actuales
 		total_coins = self.lifetime_coins + self.coins
-		
+
 		# Realizar prestigio a través del manager
 		result = self.prestige_manager.perform_prestige(total_coins)
-		
-		if result['success']:
+
+		if result["success"]:
 			# Resetear progreso del juego
 			self.reset_for_prestige()
-			
+
 			# Sincronizar datos
 			self._sync_prestige_data()
-			
+
 			logging.info(f"Prestigio completado: {result}")
 			return True
-		
+
 		return False
 
 	def reset_for_prestige(self):
@@ -753,31 +811,31 @@ class GameState:
 		self.coins = 0
 		self.total_clicks = 0
 		self.multiplier = 1.0
-		
+
 		# Resetear recursos
 		self.resource_manager.resources = {
 			resource_type: 0 for resource_type in self.resource_manager.resources
 		}
-		
+
 		# Resetear edificios
 		for building in self.building_manager.buildings.values():
 			building.count = 0
-		
+
 		# Resetear mejoras
 		for upgrade in self.upgrade_manager.upgrades.values():
 			upgrade.level = 0
-		
+
 		# Resetear bonificaciones temporales
 		self.bonus_multiplier = 1.0
 		self.bonus_end_time = 0.0
-		
+
 		# Resetear estadísticas de sesión
 		self.session_clicks = 0
 		self.session_coins = 0
-		
+
 		# Guardar estado
 		self.save_game()
-		
+
 		logging.info("Progreso reseteado para prestigio")
 
 	def get_prestige_stats(self) -> dict:
@@ -788,15 +846,15 @@ class GameState:
 		"""
 		stats = self.prestige_manager.get_stats()
 		preview = self.prestige_manager.get_prestige_preview(self.lifetime_coins + self.coins)
-		
+
 		return {
-			"prestige_crystals": stats['prestige_crystals'],
-			"total_prestiges": stats['prestige_count'],
-			"lifetime_coins": stats['lifetime_coins'],
-			"prestige_multiplier": stats['income_multiplier'],
-			"can_prestige": preview['can_prestige'],
-			"crystals_if_prestige": preview['crystals_gained'],
-			"preview": preview
+			"prestige_crystals": stats["prestige_crystals"],
+			"total_prestiges": stats["prestige_count"],
+			"lifetime_coins": stats["lifetime_coins"],
+			"prestige_multiplier": stats["income_multiplier"],
+			"can_prestige": preview["can_prestige"],
+			"crystals_if_prestige": preview["crystals_gained"],
+			"preview": preview,
 		}
 
 	def add_experience(self, amount: int):
@@ -965,7 +1023,7 @@ class GameState:
 
 	def register_enemy_defeat(self, enemy_type, enemy_level: int, is_boss: bool = False) -> None:
 		"""
-		Registra la derrota de un enemigo para el sistema de desbloqueo.
+		Registra la derrota de un enemigo para el sistema de desbloqueo y loot.
 
 		Args:
 			enemy_type: Tipo de enemigo derrotado
@@ -989,6 +1047,17 @@ class GameState:
 				self.unlock_manager.update_exploration_progress(
 					self.dungeon_manager.active_dungeon,
 					current_progress * 100.0,  # Convertir a porcentaje
+				)
+
+			# NUEVO: Procesar loot automático del enemigo derrotado
+			if hasattr(self, "loot_combat_integration") and self.loot_combat_integration:
+				# El loot_combat_integration ya tiene su propio callback registrado directamente
+				# Solo registramos estadísticas adicionales aquí
+				logging.info(
+					"Enemigo %s (nivel %d) derrotado%s",
+					enemy_type,
+					enemy_level,
+					" (BOSS)" if is_boss else "",
 				)
 
 		except Exception as e:
@@ -1080,6 +1149,164 @@ class GameState:
 		except Exception as e:
 			logging.error("Error obteniendo resumen de desbloqueos: %s", e)
 			return {}
+
+	def _get_equipment_save_data(self) -> dict:
+		"""Obtiene los datos de equipamiento para guardar."""
+		equipment_data = {
+			"equipped_items": {},
+			"inventory": [],
+			"player_stats": {
+				"base_attack": self.equipment_manager.player_stats.base_attack,
+				"base_defense": self.equipment_manager.player_stats.base_defense,
+				"base_health": self.equipment_manager.player_stats.base_health,
+			},
+		}
+
+		# Guardar ítems equipados
+		for eq_type, item in self.equipment_manager.equipped_items.items():
+			if item is not None:
+				equipment_data["equipped_items"][eq_type.value] = self._serialize_equipment(item)
+
+		# Guardar inventario
+		for item in self.equipment_manager.inventory:
+			equipment_data["inventory"].append(self._serialize_equipment(item))
+
+		return equipment_data
+
+	def _serialize_equipment(self, equipment) -> dict:
+		"""Serializa un equipamiento para guardado."""
+		from core.equipment import Equipment, EquipmentType, Rarity
+
+		return {
+			"item_id": equipment.item_id,
+			"equipment_type": equipment.equipment_type.value,
+			"level": equipment.level,
+			"rarity": equipment.rarity.value,
+			"name": equipment.name,
+			"stats": {
+				"attack": equipment.stats.attack,
+				"defense": equipment.stats.defense,
+				"health": equipment.stats.health,
+				"critical_chance": equipment.stats.critical_chance,
+				"critical_damage": equipment.stats.critical_damage,
+				"production_bonus": equipment.stats.production_bonus,
+			},
+			"effects": [
+				{
+					"name": effect.name,
+					"description": effect.description,
+					"value": effect.value,
+					"effect_type": effect.effect_type,
+				}
+				for effect in equipment.effects
+			],
+		}
+
+	def _load_equipment_data(self, equipment_data: dict):
+		"""Carga los datos de equipamiento."""
+		if not equipment_data:
+			return
+
+		# Cargar estadísticas base del jugador
+		if "player_stats" in equipment_data:
+			stats = equipment_data["player_stats"]
+			self.equipment_manager.player_stats.base_attack = stats.get("base_attack", 10.0)
+			self.equipment_manager.player_stats.base_defense = stats.get("base_defense", 5.0)
+			self.equipment_manager.player_stats.base_health = stats.get("base_health", 100.0)
+
+		# Cargar inventario
+		if "inventory" in equipment_data:
+			for item_data in equipment_data["inventory"]:
+				equipment = self._deserialize_equipment(item_data)
+				if equipment:
+					self.equipment_manager.inventory.append(equipment)
+
+		# Cargar ítems equipados
+		if "equipped_items" in equipment_data:
+			for eq_type_str, item_data in equipment_data["equipped_items"].items():
+				equipment = self._deserialize_equipment(item_data)
+				if equipment:
+					from core.equipment import EquipmentType
+
+					eq_type = EquipmentType(eq_type_str)
+					self.equipment_manager.equipped_items[eq_type] = equipment
+
+		# Recalcular estadísticas después de cargar
+		self.equipment_manager._recalculate_stats()
+
+	def _deserialize_equipment(self, item_data: dict):
+		"""Deserializa un equipamiento desde datos guardados."""
+		try:
+			from core.equipment import (
+				Equipment,
+				EquipmentType,
+				Rarity,
+				EquipmentStats,
+				EquipmentEffect,
+			)
+
+			# Crear equipamiento básico
+			eq_type = EquipmentType(item_data["equipment_type"])
+			rarity = Rarity(item_data["rarity"])
+			equipment = Equipment(eq_type, item_data["level"], rarity)
+
+			# Restaurar datos guardados
+			equipment.item_id = item_data["item_id"]
+			equipment.name = item_data["name"]
+
+			# Restaurar estadísticas
+			stats_data = item_data["stats"]
+			equipment.stats.attack = stats_data["attack"]
+			equipment.stats.defense = stats_data["defense"]
+			equipment.stats.health = stats_data["health"]
+			equipment.stats.critical_chance = stats_data["critical_chance"]
+			equipment.stats.critical_damage = stats_data["critical_damage"]
+			equipment.stats.production_bonus = stats_data["production_bonus"]
+
+			# Restaurar efectos
+			equipment.effects = []
+			for effect_data in item_data["effects"]:
+				effect = EquipmentEffect(
+					effect_data["name"],
+					effect_data["description"],
+					effect_data["value"],
+					effect_data["effect_type"],
+				)
+				equipment.effects.append(effect)
+
+			return equipment
+
+		except Exception as e:
+			logging.error(f"Error deserializing equipment: {e}")
+			return None
+
+	def generate_loot_for_player(self, dungeon_level: int, is_boss: bool = False) -> list:
+		"""Genera loot para el jugador basado en el progreso actual."""
+		return self.equipment_manager.generate_loot(dungeon_level, is_boss)
+
+	def apply_equipment_bonuses(self) -> dict:
+		"""Aplica las bonificaciones del equipamiento al jugador y devuelve resumen."""
+		stats = self.equipment_manager.player_stats
+
+		# Aplicar bonus de producción idle
+		production_bonus = stats.get_total_production_bonus()
+		if production_bonus > 0:
+			# Aplicar a todos los edificios
+			for building_type in self.building_manager.buildings:
+				current_multiplier = getattr(
+					self.building_manager, f"{building_type.value}_multiplier", 1.0
+				)
+				new_multiplier = current_multiplier * (1 + production_bonus)
+				setattr(self.building_manager, f"{building_type.value}_multiplier", new_multiplier)
+
+		return {
+			"total_attack": stats.get_total_attack(),
+			"total_defense": stats.get_total_defense(),
+			"total_health": stats.get_total_health(),
+			"critical_chance": stats.get_total_critical_chance() * 100,
+			"critical_damage": stats.get_total_critical_damage() * 100,
+			"production_bonus": production_bonus * 100,
+		}
 
 
 # Instancia global del estado del juego

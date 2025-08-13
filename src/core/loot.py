@@ -452,6 +452,14 @@ class LootGenerator:
 		Returns:
 		    Lista de objetos generados (puede estar vacía)
 		"""
+		logger.info(
+			"=== LOOT GENERATION === Enemigo: %s (lvl %d), Jugador: lvl %d, Boss: %s",
+			enemy_type,
+			enemy_level,
+			player_level,
+			is_boss,
+		)
+
 		dropped_items: list[LootItem] = []
 
 		# Probabilidad base de drop
@@ -467,6 +475,14 @@ class LootGenerator:
 		# Aplicar bonificación de bioma
 		final_drop_chance = base_drop_chance * level_modifier * biome_bonus
 		final_drop_chance = min(1.0, final_drop_chance)  # Máximo 100%
+
+		logger.info(
+			"Drop chance: %.2f (base: %.2f, level_mod: %.2f, biome: %.2f)",
+			final_drop_chance,
+			base_drop_chance,
+			level_modifier,
+			biome_bonus,
+		)
 
 		# Determinar cantidad de ítems
 		num_drops = 1

@@ -62,10 +62,10 @@ class CombatStats:
 @dataclass
 class Player:
 	"""Jugador con sistema avanzado de estadísticas y progresión."""
-	
+
 	# Referencia al sistema de estadísticas completo
-	stats_manager: Optional['PlayerStatsManager'] = None
-	
+	stats_manager: Optional["PlayerStatsManager"] = None
+
 	# Stats base para casos donde no hay PlayerStatsManager (retrocompatibilidad)
 	base_stats: CombatStats = field(
 		default_factory=lambda: CombatStats(
@@ -78,60 +78,65 @@ class Player:
 			critical_multiplier=2.0,
 		)
 	)
-	
+
 	# Bonificaciones de equipamiento (aplicadas desde EquipmentIntegration)
 	equipment_bonuses: dict = field(default_factory=dict)
-	
+
 	def initialize_stats_manager(self):
 		"""Inicializa el gestor de estadísticas si no existe."""
 		if self.stats_manager is None:
 			from core.player_stats import PlayerStatsManager
+
 			self.stats_manager = PlayerStatsManager()
 			# Actualizar bonificaciones de equipamiento
 			self.stats_manager.update_equipment_bonuses(self.equipment_bonuses)
-	
+
 	def get_level(self) -> int:
 		"""Obtiene el nivel actual del jugador."""
 		if self.stats_manager:
 			return self.stats_manager.level_system.level
 		return 1  # Valor por defecto
-	
+
 	def get_experience_for_next_level(self) -> int:
 		"""Calcula la experiencia necesaria para el siguiente nivel."""
 		if self.stats_manager:
 			return self.stats_manager.level_system.get_experience_for_next_level()
 		return 100 + (self.get_level() - 1) * 50  # Fórmula legacy
-	
+
 	def can_level_up(self) -> bool:
 		"""Verifica si puede subir de nivel."""
 		if self.stats_manager:
 			return self.stats_manager.level_system.can_level_up()
 		return False
-	
+
 	def get_effective_stats(self, biome_bonuses: Optional[dict] = None) -> CombatStats:
 		"""Calcula las estadísticas finales con bonificaciones de equipamiento y bioma."""
 		if self.stats_manager:
 			# Usar el sistema avanzado de estadísticas con bonificaciones de bioma
-			return self.stats_manager.get_effective_combat_stats(self.base_stats.current_hp, biome_bonuses)
-		
+			return self.stats_manager.get_effective_combat_stats(
+				self.base_stats.current_hp, biome_bonuses
+			)
+
 		# Sistema legacy para retrocompatibilidad
 		damage_mult = self.equipment_bonuses.get("damage_multiplier", 1.0)
 		click_mult = self.equipment_bonuses.get("click_multiplier", 1.0)
-		
+
 		# Aplicar bonificaciones de bioma al sistema legacy
 		biome_damage_mult = 1.0
 		biome_defense_mult = 1.0
 		biome_speed_mult = 1.0
-		
+
 		if biome_bonuses:
 			biome_damage_mult = biome_bonuses.get("damage", 1.0)
 			biome_defense_mult = biome_bonuses.get("defense", 1.0)
 			biome_speed_mult = biome_bonuses.get("attack_speed", 1.0)
-		
-		effective_attack = int(self.base_stats.attack * damage_mult * click_mult * biome_damage_mult)
+
+		effective_attack = int(
+			self.base_stats.attack * damage_mult * click_mult * biome_damage_mult
+		)
 		effective_defense = int(self.base_stats.defense * biome_defense_mult)
 		effective_speed = self.base_stats.speed * click_mult * biome_speed_mult
-		
+
 		return CombatStats(
 			max_hp=self.base_stats.max_hp,
 			current_hp=self.base_stats.current_hp,
@@ -141,48 +146,54 @@ class Player:
 			critical_chance=min(0.95, self.base_stats.critical_chance),
 			critical_multiplier=self.base_stats.critical_multiplier,
 		)
-	
+
 	def add_experience(self, amount: int) -> int:
 		"""Añade experiencia y retorna niveles ganados."""
 		if self.stats_manager:
 			levels_gained = self.stats_manager.add_experience(amount)
 			return len(levels_gained)
-		
+
 		# Sistema legacy - no implementado
 		return 0
-	
+
 	def update_equipment_bonuses(self, bonuses: dict):
 		"""Actualiza las bonificaciones de equipamiento."""
 		self.equipment_bonuses = bonuses.copy()
 		if self.stats_manager:
 			self.stats_manager.update_equipment_bonuses(bonuses)
-	
+
 	def get_player_info(self) -> dict:
 		"""Retorna información completa del jugador."""
 		if self.stats_manager:
 			return self.stats_manager.get_player_info()
-		
+
 		# Información básica sin sistema avanzado
 		return {
-			'level': self.get_level(),
-			'experience': {'current': 0, 'to_next_level': 0, 'total': 0, 'progress': 0.0},
-			'attributes': {'strength': 10, 'agility': 10, 'intelligence': 10, 'vitality': 10, 'available_points': 0},
-			'combat_stats': {
-				'max_hp': self.base_stats.max_hp,
-				'attack': self.base_stats.attack,
-				'defense': self.base_stats.defense,
-				'speed': self.base_stats.speed,
-				'critical_chance': self.base_stats.critical_chance,
-				'critical_multiplier': self.base_stats.critical_multiplier
+			"level": self.get_level(),
+			"experience": {"current": 0, "to_next_level": 0, "total": 0, "progress": 0.0},
+			"attributes": {
+				"strength": 10,
+				"agility": 10,
+				"intelligence": 10,
+				"vitality": 10,
+				"available_points": 0,
 			},
-			'statistics': {
-				'enemies_defeated': 0,
-				'damage_dealt': 0,
-				'critical_hits': 0,
-				'items_found': 0,
-				'current_streak': 0,
-				'longest_streak': 0
-			}
+			"combat_stats": {
+				"max_hp": self.base_stats.max_hp,
+				"attack": self.base_stats.attack,
+				"defense": self.base_stats.defense,
+				"speed": self.base_stats.speed,
+				"critical_chance": self.base_stats.critical_chance,
+				"critical_multiplier": self.base_stats.critical_multiplier,
+			},
+			"statistics": {
+				"enemies_defeated": 0,
+				"damage_dealt": 0,
+				"critical_hits": 0,
+				"items_found": 0,
+				"current_streak": 0,
+				"longest_streak": 0,
+			},
 		}
 
 
@@ -241,7 +252,7 @@ class CombatManager:
 	def __init__(self, player: "Player"):
 		"""
 		Inicializa el gestor de combate.
-		
+
 		Args:
 			player: Instancia del jugador
 		"""
@@ -251,7 +262,7 @@ class CombatManager:
 		self.combat_start_time = 0.0
 		self.last_player_attack = 0.0
 		self.last_enemy_attack = 0.0
-		
+
 		# Bonificaciones de bioma aplicadas
 		self.biome_bonuses: Optional[dict] = None
 
@@ -262,7 +273,7 @@ class CombatManager:
 		# Regeneración automática del jugador
 		self.last_regen_time = 0.0
 		self.regen_rate = 0.02  # 2% de salud máxima por segundo
-		
+
 		# Callback para registrar eventos de combate
 		self.on_enemy_defeated_callback = None
 
@@ -281,7 +292,7 @@ class CombatManager:
 		self.total_damage_received = 0
 
 		print(f"¡Combate iniciado contra {enemy.name} (Nivel {enemy.level})!")
-	
+
 	def set_biome_bonuses(self, bonuses: Optional[dict]) -> None:
 		"""Configura las bonificaciones de bioma para el combate."""
 		self.biome_bonuses = bonuses
@@ -335,7 +346,7 @@ class CombatManager:
 			self.player.stats_manager.statistics.add_damage_dealt(damage_dealt)
 			if is_critical:
 				print(f"¡CRÍTICO! Haces {damage_dealt} de daño")
-		
+
 		self.total_damage_dealt += damage_dealt
 		self.total_damage_dealt += damage_dealt
 
@@ -392,19 +403,23 @@ class CombatManager:
 			if levels_gained > 0:
 				level = self.player.get_level()
 				print(f"¡Nivel subido! Ahora eres nivel {level}")
-			
+
 			# Llamar callback para registrar derrota de enemigo
 			if self.on_enemy_defeated_callback:
 				try:
 					# Determinar si era un boss (enemigos de nivel muy alto o con nombre especial)
-					is_boss = (self.current_enemy.level > 50 or 
-							 any(boss_keyword in self.current_enemy.name.lower() 
-								 for boss_keyword in ['boss', 'chief', 'lord', 'king', 'dragon', 'lich']))
-					
+					is_boss = self.current_enemy.level > 50 or any(
+						boss_keyword in self.current_enemy.name.lower()
+						for boss_keyword in ["boss", "chief", "lord", "king", "dragon", "lich"]
+					)
+
+					print(
+						f"*** COMBAT CALLBACK *** Enemigo: {self.current_enemy.name} (lvl {self.current_enemy.level})"
+					)
 					self.on_enemy_defeated_callback(
 						enemy_type=self.current_enemy.name,
 						enemy_level=self.current_enemy.level,
-						is_boss=is_boss
+						is_boss=is_boss,
 					)
 				except Exception as e:
 					print(f"Error en callback de derrota de enemigo: {e}")
@@ -428,7 +443,7 @@ class CombatManager:
 			# Resetear racha de combate
 			if self.player.stats_manager:
 				self.player.stats_manager.statistics.reset_combat_streak()
-			
+
 			result = CombatResult(
 				state=CombatState.PLAYER_DEFEATED,
 				damage_dealt=self.total_damage_dealt,
