@@ -59,42 +59,42 @@ src/
 **Flujo de navegación validado:**
 ```
 LoadingScreen (2.5s) → StartScreen → MainScreen
-                          ↓
-              SettingsScreen / StatsScreen / UpgradesScreen
+						↓
+			SettingsScreen / StatsScreen / UpgradesScreen
 ```
 
 **Funcionalidades por pantalla:**
 
 1. **LoadingScreen** ✅
-   - Progreso animado 0-100%
-   - Logo SiKIdle prominente
-   - Transición automática tras 2.5s
+- Progreso animado 0-100%
+- Logo SiKIdle prominente
+- Transición automática tras 2.5s
 
 2. **StartScreen** ✅
-   - Banner AdMob placeholder superior
-   - Botones navegación principales (Jugar, Estadísticas, Configuración)
-   - Información de dispositivo y versión
+- Banner AdMob placeholder superior
+- Botones navegación principales (Jugar, Estadísticas, Configuración)
+- Información de dispositivo y versión
 
 3. **MainScreen** ✅
-   - Botón de clic principal con animaciones
-   - Contador monedas en tiempo real
-   - Botón anuncio con recompensa (x2 monedas 30s)
-   - Botón mejoras para navegación
+- Botón de clic principal con animaciones
+- Contador monedas en tiempo real
+- Botón anuncio con recompensa (x2 monedas 30s)
+- Botón mejoras para navegación
 
 4. **SettingsScreen** ✅
-   - Configuración sonido/vibración
-   - Botón reset progreso
-   - Información versión del juego
+- Configuración sonido/vibración
+- Botón reset progreso
+- Información versión del juego
 
 5. **StatsScreen** ✅
-   - 4 secciones: Gameplay, Economía, Tiempo, Logros
-   - Formateo números grandes (K, M, B)
-   - Tiempo jugado en formato legible
+- 4 secciones: Gameplay, Economía, Tiempo, Logros
+- Formateo números grandes (K, M, B)
+- Tiempo jugado en formato legible
 
 6. **UpgradesScreen** ✅
-   - 6 categorías: Click, Auto, Multiplicador, Utilidades, Especiales, Prestigio
-   - 12 mejoras diferentes con niveles máximos
-   - Sistema de costos escalables
+- 6 categorías: Click, Auto, Multiplicador, Utilidades, Especiales, Prestigio
+- 12 mejoras diferentes con niveles máximos
+- Sistema de costos escalables
 
 **Conservación de estado:** ✅ Todos los datos se mantienen entre navegaciones
 
@@ -263,22 +263,22 @@ docs/
 ### ⚠️ Problemas Menores (No bloqueantes)
 
 1. **Schema de base de datos**
-   - **Problema:** Columna `upgrade_id` vs `id` en tabla upgrades
-   - **Impacto:** Errores en logs, funcionalidad no afectada
-   - **Mitigación:** Ajuste menor en siguiente versión
-   - **Prioridad:** Baja
+- **Problema:** Columna `upgrade_id` vs `id` en tabla upgrades
+- **Impacto:** Errores en logs, funcionalidad no afectada
+- **Mitigación:** Ajuste menor en siguiente versión
+- **Prioridad:** Baja
 
 2. **Errores de formato restantes**
-   - **Problema:** 145 espacios en docstrings  
-   - **Impacto:** Cosmético únicamente
-   - **Mitigación:** Limpieza en siguiente sesión
-   - **Prioridad:** Muy baja
+- **Problema:** 145 espacios en docstrings  
+- **Impacto:** Cosmético únicamente
+- **Mitigación:** Limpieza en siguiente sesión
+- **Prioridad:** Muy baja
 
 3. **MyPy validation pendiente**
-   - **Problema:** Conflictos con importaciones Kivy
-   - **Impacto:** No afecta funcionalidad
-   - **Mitigación:** Configuración específica para Kivy
-   - **Prioridad:** Baja
+- **Problema:** Conflictos con importaciones Kivy
+- **Impacto:** No afecta funcionalidad
+- **Mitigación:** Configuración específica para Kivy
+- **Prioridad:** Baja
 
 ### ✅ Elementos Críticos: TODOS FUNCIONANDO
 

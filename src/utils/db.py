@@ -196,6 +196,28 @@ class DatabaseManager:
 			cursor.execute(query, params)
 			conn.commit()
 
+	def execute(self, query: str, params: tuple = ()) -> list:
+		"""Método genérico execute para compatibilidad.
+		
+		Args:
+			query: Consulta SQL a ejecutar
+			params: Parámetros para la consulta
+			
+		Returns:
+			Lista de resultados para SELECT, lista vacía para otros
+		"""
+		with self.get_connection() as conn:
+			cursor = conn.cursor()
+			cursor.execute(query, params)
+			
+			# Si es SELECT, retornar resultados
+			if query.strip().upper().startswith('SELECT'):
+				return cursor.fetchall()
+			else:
+				# Para INSERT/UPDATE/DELETE, hacer commit
+				conn.commit()
+				return []
+
 	def get_player_data(self) -> dict[str, Any]:
 		"""Obtiene todos los datos del jugador.
 		

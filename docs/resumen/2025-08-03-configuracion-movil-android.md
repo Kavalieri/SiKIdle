@@ -11,12 +11,12 @@
 - **Antes:** Configuración genérica multiplataforma
 - **Después:** Optimizado específicamente para móviles Android
 - **Cambios clave:**
-  - Resolución móvil (360x640px en desktop, adaptativo en Android)
-  - Orientación portrait forzada
-  - Interfaz táctil con botón de prueba funcional
-  - Fuentes escalables (sp units)
-  - Padding optimizado para dispositivos táctiles
-  - Detección de plataforma automática
+- Resolución móvil (360x640px en desktop, adaptativo en Android)
+- Orientación portrait forzada
+- Interfaz táctil con botón de prueba funcional
+- Fuentes escalables (sp units)
+- Padding optimizado para dispositivos táctiles
+- Detección de plataforma automática
 
 ### 2. Configuración Buildozer
 **Archivo creado:** `buildozer.spec`

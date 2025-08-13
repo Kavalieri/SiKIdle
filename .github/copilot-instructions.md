@@ -26,16 +26,16 @@ Desarrollar un videojuego 2D tipo *idle clicker* utilizando Python con Kivy (sin
 ## 🗂 Estructura esperada del proyecto
 
 - `src/`: todo el código fuente.
-  - `core/`: lógica del juego.
-  - `ui/`: interfaz y widgets.
-  - `utils/`: guardado, paths, helpers.
-  - `assets/`: solo lectura, recursos.
+- `core/`: lógica del juego.
+- `ui/`: interfaz y widgets.
+- `utils/`: guardado, paths, helpers.
+- `assets/`: solo lectura, recursos.
 - `dev-tools/`: documentación estructurada.
-  - `scripts/`: scripts de desarrollo y automatización.
-  - `tests/`: pruebas unitarias y de integración.
+- `scripts/`: scripts de desarrollo y automatización.
+- `tests/`: pruebas unitarias y de integración.
 - `docs/`: documentación estructurada.
-  - `resumen/`: resúmenes de cada bloque de trabajo (ver abajo).
-  - `checklist/`: listas de tareas por bloque o proceso.
+- `resumen/`: resúmenes de cada bloque de trabajo (ver abajo).
+- `checklist/`: listas de tareas por bloque o proceso.
 - `.github/`: instrucciones para agentes IA, acciones, plantillas.
 - `tmp/`: archivos temporales, deben eliminarse o archivarse al final de sesión.
 - `ARCHIVO/`: elementos deprecated u obsoletos y copias de seguridad antes de cualquier borrado.
@@ -44,47 +44,59 @@ Desarrollar un videojuego 2D tipo *idle clicker* utilizando Python con Kivy (sin
 
 ## 🧾 Documentación automática por la IA
 
-### 📋 `docs/checklist/`
+### 📋 `docs/checklist/` - Gestión Centralizada de Procesos
 
-- Antes de iniciar cualquier proceso mayor (clase nueva, refactor, sistema...), genera un checklist con:
-  - Fecha y hora (timestamp).
-  - Objetivo del bloque.
-  - Tareas desglosadas (1 por línea).
-  - Casillas para marcar (usando `- [ ]`).
-- Actualiza el estado de ese checklist a medida que avances.
+- **Un checklist por proceso/sistema**: Crear un solo archivo por sistema que se actualice continuamente
+- **Formato de timestamp completo**: `DD de mes de YYYY - HH:MM` (ej: "04 de agosto de 2025 - 14:35")
+- **Estructura requerida**:
+  - Fecha y hora de inicio del proceso
+  - Fecha y hora de última actualización
+  - Objetivo del bloque/sistema
+  - Tareas desglosadas (1 por línea) con `- [ ]` o `- [x]`
+  - Sección de progreso con timestamps de cada avance
+  - Estado actual y próximos pasos
+- **Actualización continua**: El mismo archivo se actualiza progresivamente, NO crear múltiples checklists por tarea menor
+- **Ejemplo de nombre**: `sistema_loot_aleatorio_04_agosto_2025.md` (mantener el mismo archivo durante todo el desarrollo)
 
-### 🧠 `docs/resumen/`
+### 🧠 `docs/resumen/` - Documentación de Hitos Completados
 
-- Al finalizar cada bloque de trabajo (por checklist o fase), genera un resumen técnico con:
-  - Fecha y hora.
-  - Descripción detallada del trabajo realizado.
-  - Archivos modificados.
-  - Decisiones tomadas y su justificación.
-  - Elementos pendientes, si los hay.
+- **Un resumen por hito/tarea completada**: Generar al finalizar cada bloque significativo de trabajo
+- **Timestamp completo**: Fecha y hora de finalización (`DD de mes de YYYY - HH:MM`)
+- **Contenido requerido**:
+  - Fecha y hora de finalización
+  - Tiempo total invertido en la tarea
+  - Descripción detallada del trabajo realizado
+  - Archivos creados/modificados con líneas de código
+  - Resultados de testing y validación
+  - Decisiones técnicas tomadas y justificación
+  - Impacto en el sistema general
+  - Elementos pendientes para futuras iteraciones
+- **Nombres descriptivos**: `[tipo_objeto]_[sistema]_completado_[fecha].md`
+- **Mantener histórico**: Cada resumen es un archivo separado para preservar el historial completo
 
 ### 📚 `README.md` en cada directorio importante
 
 - Generar un `README.md` por cada subdirectorio (`core`, `ui`, `utils`, etc.) con:
-  - Propósito del módulo.
-  - Lista de clases o scripts.
-  - Breve explicación de cómo interactúan.
+- Propósito del módulo.
+- Lista de clases o scripts.
+- Breve explicación de cómo interactúan.
 
 ### 📌 `README.md` raíz del proyecto
 
 - Mantener actualizado con:
-  - Descripción general.
-  - Stack técnico.
-  - Estructura de carpetas.
-  - Instrucciones para ejecución y desarrollo.
+- Descripción general.
+- Stack técnico.
+- Estructura de carpetas.
+- Instrucciones para ejecución y desarrollo.
 
 ### 👥 `CONTRIBUTING.md`
 
 - Crear y mantener actualizado con:
-  - Requisitos para colaborar.
-  - Cómo clonar, ejecutar, testear.
-  - Normas de estilo de código.
-  - Enlaces a herramientas recomendadas.
-  - Flujo de trabajo esperado (ramas, PR, validación).
+- Requisitos para colaborar.
+- Cómo clonar, ejecutar, testear.
+- Normas de estilo de código.
+- Enlaces a herramientas recomendadas.
+- Flujo de trabajo esperado (ramas, PR, validación).
 
 ---
 

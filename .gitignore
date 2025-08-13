@@ -213,3 +213,9 @@ __marimo__/
 /ARCHIVO/
 
 .vscode/
+.amazonq/
+.continue/
+tmp/
+releases/
+docs/
+venv_test/

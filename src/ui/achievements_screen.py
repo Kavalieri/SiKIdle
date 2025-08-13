@@ -20,24 +20,21 @@ from kivy.uix.scrollview import ScrollView  # type: ignore
 from kivy.uix.progressbar import ProgressBar  # type: ignore
 
 from core.game import get_game_state, GameState
-from core.achievements import AchievementType, AchievementCategory, AchievementInfo, Achievement
-from ui.screen_manager import SiKIdleScreen
+from core.achievements import AchievementCategory, Achievement
+from kivy.uix.screenmanager import Screen
 
 
 class AchievementWidget(BoxLayout):
 	"""Widget personalizado para mostrar información de un logro."""
 	
-	def __init__(self, achievement_type: AchievementType, achievement: Achievement, 
-				 achievement_info: AchievementInfo, **kwargs: Any):
+	def __init__(self, achievement: Achievement, **kwargs: Any):
 		super().__init__(**kwargs)
 		self.orientation = 'horizontal'
 		self.size_hint_y = None
 		self.height = 80
 		self.spacing = 10
 		
-		self.achievement_type = achievement_type
 		self.achievement = achievement
-		self.achievement_info = achievement_info
 		
 		self._create_widget()
 	
@@ -45,7 +42,7 @@ class AchievementWidget(BoxLayout):
 		"""Crea los elementos visuales del widget de logro."""
 		# Icono del logro
 		icon_label = Label(
-			text=self.achievement_info.emoji,
+			text=self.achievement.get_symbol(),
 			size_hint_x=None,
 			width=60,
 			font_size='24sp',
@@ -58,9 +55,9 @@ class AchievementWidget(BoxLayout):
 		info_layout = BoxLayout(orientation='vertical', size_hint_x=0.6)
 		
 		# Nombre del logro
-		name_color = [0, 1, 0, 1] if self.achievement.unlocked else [1, 1, 1, 1]
+		name_color = [0, 1, 0, 1] if self.achievement.completed else [1, 1, 1, 1]
 		name_label = Label(
-			text=self.achievement_info.name,
+			text=self.achievement.name,
 			size_hint_y=None,
 			height=30,
 			font_size='16sp',
@@ -72,7 +69,7 @@ class AchievementWidget(BoxLayout):
 		
 		# Descripción del logro
 		description_label = Label(
-			text=self.achievement_info.description,
+			text=self.achievement.description,
 			size_hint_y=None,
 			height=25,
 			font_size='12sp',
@@ -88,7 +85,7 @@ class AchievementWidget(BoxLayout):
 		# Progreso o estado
 		progress_layout = BoxLayout(orientation='vertical', size_hint_x=0.3)
 		
-		if self.achievement.unlocked:
+		if self.achievement.completed:
 			# Logro completado
 			status_label = Label(
 				text="✅ COMPLETADO",
@@ -102,7 +99,7 @@ class AchievementWidget(BoxLayout):
 			status_label.text_size = (status_label.width, status_label.height)
 			
 			# Recompensa obtenida
-			reward_text = f"💰 {self.achievement_info.reward.value:,.0f}"
+			reward_text = f"💰 {self.achievement.reward.talent_points} pts"
 			reward_label = Label(
 				text=reward_text,
 				size_hint_y=None,
@@ -118,8 +115,8 @@ class AchievementWidget(BoxLayout):
 			progress_layout.add_widget(reward_label)
 		else:
 			# Progreso del logro
-			progress_pct = self.achievement.get_progress_percentage(self.achievement_info.target_value)
-			progress_text = f"{self.achievement.progress:,.0f}/{self.achievement_info.target_value:,.0f}"
+			progress_pct = self.achievement.get_progress_percentage() / 100.0
+			progress_text = f"{self.achievement.current_progress:,.0f}/{self.achievement.target_value:,.0f}"
 			
 			progress_label = Label(
 				text=progress_text,
@@ -160,12 +157,16 @@ class AchievementWidget(BoxLayout):
 		self.add_widget(progress_layout)
 
 
-class AchievementsScreen(SiKIdleScreen):
+class AchievementsScreen(Screen):
 	"""Pantalla de logros del juego."""
 	
-	def __init__(self, manager_ref, **kwargs: Any):
-		super().__init__('achievements', manager_ref, **kwargs)
-		self.game_state: GameState = get_game_state()
+	def __init__(self, name='achievements', **kwargs: Any):
+		super().__init__(name=name, **kwargs)
+		try:
+			self.game_state: GameState = get_game_state()
+		except Exception as e:
+			logging.error(f"Error getting game state: {e}")
+			self.game_state = None
 		self.update_event = None
 		
 		# Crear la interfaz principal
@@ -177,13 +178,34 @@ class AchievementsScreen(SiKIdleScreen):
 		"""Crea la interfaz principal de logros."""
 		main_layout = BoxLayout(orientation='vertical', padding=10, spacing=10)
 		
-		# Header con estadísticas generales
-		header = self._create_header()
-		main_layout.add_widget(header)
+		# Título
+		title_label = Label(
+			text="🏆 SISTEMA DE LOGROS",
+			font_size='24sp',
+			bold=True,
+			size_hint_y=None,
+			height=60,
+			color=[1, 0.8, 0, 1]
+		)
+		main_layout.add_widget(title_label)
 		
-		# Panel de pestañas por categorías
-		tabs_panel = self._create_tabs_panel()
-		main_layout.add_widget(tabs_panel)
+		# Mensaje de estado
+		if self.game_state is None:
+			status_label = Label(
+				text="Sistema de logros en desarrollo...\n\nPronto podrás desbloquear logros\ny obtener recompensas especiales!",
+				font_size='16sp',
+				halign='center'
+			)
+			status_label.bind(texture_size=status_label.setter('text_size'))
+			main_layout.add_widget(status_label)
+		else:
+			# Header con estadísticas generales
+			header = self._create_header()
+			main_layout.add_widget(header)
+			
+			# Panel de pestañas por categorías
+			tabs_panel = self._create_tabs_panel()
+			main_layout.add_widget(tabs_panel)
 		
 		# Botón de cerrar
 		close_button = Button(
@@ -213,9 +235,16 @@ class AchievementsScreen(SiKIdleScreen):
 		title_label.text_size = (title_label.width, title_label.height)
 		
 		# Estadísticas
-		unlocked_count = self.game_state.achievement_manager.get_unlocked_count()
-		total_count = self.game_state.achievement_manager.get_total_count()
-		completion_pct = (unlocked_count / total_count * 100) if total_count > 0 else 0
+		if self.game_state and hasattr(self.game_state, 'achievement_manager'):
+			completed_achievements = self.game_state.achievement_manager.get_completed_achievements()
+			all_achievements = self.game_state.achievement_manager.get_all_achievements()
+			unlocked_count = len(completed_achievements)
+			total_count = len(all_achievements)
+			completion_pct = (unlocked_count / total_count * 100) if total_count > 0 else 0
+		else:
+			unlocked_count = 0
+			total_count = 0
+			completion_pct = 0
 		
 		stats_label = Label(
 			text=f"Completado: {unlocked_count}/{total_count} ({completion_pct:.1f}%)",
@@ -236,29 +265,29 @@ class AchievementsScreen(SiKIdleScreen):
 		"""Crea el panel de pestañas con categorías de logros."""
 		tabs_panel = TabbedPanel(do_default_tab=False)
 		
-		# Pestaña de Progresión
-		progression_tab = TabbedPanelItem(text='📈 Progresión')
-		progression_content = self._create_category_content(AchievementCategory.PROGRESSION)
-		progression_tab.add_widget(progression_content)
-		tabs_panel.add_widget(progression_tab)
+		# Pestaña de Combate
+		combat_tab = TabbedPanelItem(text='⚔️ Combate')
+		combat_content = self._create_category_content(AchievementCategory.COMBAT)
+		combat_tab.add_widget(combat_content)
+		tabs_panel.add_widget(combat_tab)
 		
-		# Pestaña de Tiempo
-		time_tab = TabbedPanelItem(text='⏱️ Tiempo')
-		time_content = self._create_category_content(AchievementCategory.TIME)
-		time_tab.add_widget(time_content)
-		tabs_panel.add_widget(time_tab)
+		# Pestaña de Exploración
+		exploration_tab = TabbedPanelItem(text='🗺️ Exploración')
+		exploration_content = self._create_category_content(AchievementCategory.EXPLORATION)
+		exploration_tab.add_widget(exploration_content)
+		tabs_panel.add_widget(exploration_tab)
 		
-		# Pestaña de Eficiencia
-		efficiency_tab = TabbedPanelItem(text='⚡ Eficiencia')
-		efficiency_content = self._create_category_content(AchievementCategory.EFFICIENCY)
-		efficiency_tab.add_widget(efficiency_content)
-		tabs_panel.add_widget(efficiency_tab)
+		# Pestaña de Loot
+		loot_tab = TabbedPanelItem(text='💰 Loot')
+		loot_content = self._create_category_content(AchievementCategory.LOOT)
+		loot_tab.add_widget(loot_content)
+		tabs_panel.add_widget(loot_tab)
 		
-		# Pestaña de Ocultos
-		hidden_tab = TabbedPanelItem(text='🌟 Ocultos')
-		hidden_content = self._create_category_content(AchievementCategory.HIDDEN)
-		hidden_tab.add_widget(hidden_content)
-		tabs_panel.add_widget(hidden_tab)
+		# Pestaña de Especiales
+		special_tab = TabbedPanelItem(text='⭐ Especiales')
+		special_content = self._create_category_content(AchievementCategory.SPECIAL)
+		special_tab.add_widget(special_content)
+		tabs_panel.add_widget(special_tab)
 		
 		return tabs_panel
 	
@@ -270,7 +299,10 @@ class AchievementsScreen(SiKIdleScreen):
 		content_layout.bind(minimum_height=content_layout.setter('height'))
 		
 		# Obtener logros de esta categoría
-		achievements_in_category = self.game_state.achievement_manager.get_achievements_by_category(category)
+		if self.game_state and hasattr(self.game_state, 'achievement_manager'):
+			achievements_in_category = self.game_state.achievement_manager.get_achievements_by_category(category)
+		else:
+			achievements_in_category = []
 		
 		if not achievements_in_category:
 			# Sin logros en esta categoría
@@ -287,15 +319,8 @@ class AchievementsScreen(SiKIdleScreen):
 			content_layout.add_widget(no_achievements_label)
 		else:
 			# Agregar widgets de logros
-			for achievement_type in achievements_in_category:
-				achievement = self.game_state.achievement_manager.get_achievement(achievement_type)
-				achievement_info = self.game_state.achievement_manager.get_achievement_info(achievement_type)
-				
-				# Solo mostrar logros ocultos si están desbloqueados
-				if achievement_info.hidden and not achievement.unlocked:
-					continue
-				
-				achievement_widget = AchievementWidget(achievement_type, achievement, achievement_info)
+			for achievement in achievements_in_category:
+				achievement_widget = AchievementWidget(achievement)
 				content_layout.add_widget(achievement_widget)
 		
 		scroll_view.add_widget(content_layout)
@@ -315,11 +340,11 @@ class AchievementsScreen(SiKIdleScreen):
 	def on_close_button(self, instance):
 		"""Maneja el clic en el botón de cerrar."""
 		logging.info("Cerrando pantalla de logros")
-		self.go_back()
+		if self.manager:
+			self.manager.current = 'home'
 	
 	def on_enter(self, *args):
 		"""Se ejecuta cuando se entra a la pantalla."""
-		super().on_enter(*args)
 		logging.info("Entrando a pantalla de logros")
 		
 		# Actualizar UI inmediatamente
@@ -331,7 +356,6 @@ class AchievementsScreen(SiKIdleScreen):
 	
 	def on_leave(self, *args):
 		"""Se ejecuta cuando se sale de la pantalla."""
-		super().on_leave(*args)
 		logging.info("Saliendo de pantalla de logros")
 		
 		# Cancelar actualizaciones periódicas

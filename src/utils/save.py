@@ -64,7 +64,7 @@ class SaveManager:
 		"""
 		try:
 			if game_state:
-				# Actualizar datos del jugador
+				# Actualizar datos básicos del jugador
 				player_data = {
 					'coins': game_state.get('coins', 0),
 					'total_clicks': game_state.get('total_clicks', 0),
@@ -72,6 +72,32 @@ class SaveManager:
 					'total_playtime': game_state.get('total_playtime', 0)
 				}
 				self.db.update_player_data(**player_data)
+
+				# Guardar datos de prestigio
+				if any(key in game_state for key in ['prestige_crystals', 'total_prestiges', 'lifetime_coins', 'prestige_multiplier']):
+					prestige_data = {
+						'prestige_crystals': game_state.get('prestige_crystals', 0),
+						'total_prestiges': game_state.get('total_prestiges', 0),
+						'lifetime_coins': game_state.get('lifetime_coins', 0.0),
+						'prestige_multiplier': game_state.get('prestige_multiplier', 1.0)
+					}
+					self._save_json_data('prestige', prestige_data)
+
+				# Guardar datos de talentos y experiencia
+				if any(key in game_state for key in ['player_level', 'player_experience', 'talent_points', 'talents']):
+					talent_data = {
+						'player_level': game_state.get('player_level', 1),
+						'player_experience': game_state.get('player_experience', 0),
+						'talent_points': game_state.get('talent_points', 0),
+						'total_talent_points_earned': game_state.get('total_talent_points_earned', 0),
+						'talents': game_state.get('talents', {})
+					}
+					self._save_json_data('talents', talent_data)
+
+				# Guardar datos de sistemas complejos como JSON
+				for system_key in ['resources', 'buildings', 'upgrades', 'combat_stats', 'dungeon_progress', 'inventory']:
+					if system_key in game_state:
+						self._save_json_data(system_key, game_state[system_key])
 
 				# Actualizar estadísticas si están disponibles
 				stats = game_state.get('stats', {})
@@ -130,6 +156,20 @@ class SaveManager:
 				'stats': stats,
 				'settings': settings
 			}
+
+			# Cargar datos de prestigio
+			prestige_data = self._load_json_data('prestige', {})
+			game_state.update(prestige_data)
+
+			# Cargar datos de talentos
+			talent_data = self._load_json_data('talents', {})
+			game_state.update(talent_data)
+
+			# Cargar datos de sistemas complejos
+			for system_key in ['resources', 'buildings', 'upgrades', 'combat_stats', 'dungeon_progress', 'inventory']:
+				system_data = self._load_json_data(system_key, {})
+				if system_data:
+					game_state[system_key] = system_data
 
 			logging.info(f"Estado del juego cargado: {player_data['coins']} monedas, {player_data['total_clicks']} clics")
 			return game_state
@@ -255,6 +295,68 @@ class SaveManager:
 		"""
 		logging.info("Guardado forzado ejecutado")
 		return self.save_game_state()
+
+	def _save_json_data(self, key: str, data: dict) -> bool:
+		"""Guarda datos complejos como JSON en la base de datos.
+		
+		Args:
+			key: Clave para identificar los datos
+			data: Datos a guardar
+			
+		Returns:
+			True si se guardó correctamente
+		"""
+		try:
+			import json
+			json_data = json.dumps(data)
+			self.db.set_setting(f"json_{key}", json_data)
+			return True
+		except Exception as e:
+			logging.error(f"Error guardando datos JSON {key}: {e}")
+			return False
+
+	def _load_json_data(self, key: str, default: dict) -> dict:
+		"""Carga datos complejos desde JSON en la base de datos.
+		
+		Args:
+			key: Clave de los datos
+			default: Valor por defecto si no existen
+			
+		Returns:
+			Datos cargados o valor por defecto
+		"""
+		try:
+			import json
+			json_data = self.db.get_setting(f"json_{key}", "")
+			if json_data:
+				return json.loads(json_data)
+			return default
+		except Exception as e:
+			logging.error(f"Error cargando datos JSON {key}: {e}")
+			return default
+
+	def create_backup(self) -> bool:
+		"""Crea una copia de seguridad del estado actual.
+		
+		Returns:
+			True si se creó la copia correctamente
+		"""
+		try:
+			import time
+			timestamp = int(time.time())
+			backup_key = f"backup_{timestamp}"
+			
+			# Obtener estado actual completo
+			current_state = self.load_game_state()
+			
+			# Guardar como backup
+			self._save_json_data(backup_key, current_state)
+			
+			logging.info(f"Backup creado: {backup_key}")
+			return True
+		except Exception as e:
+			logging.error(f"Error creando backup: {e}")
+			return False
 
 
 # Instancia global del gestor de guardado

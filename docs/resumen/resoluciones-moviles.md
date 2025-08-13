@@ -80,11 +80,11 @@ python src/main.py
 ```python
 # src/config/mobile_config.py
 class MobileConfig:
-    DEFAULT_RESOLUTION: ResolutionKey = 'large'
-    
-    @classmethod
-    def configure_for_mobile(cls, resolution=None):
-        # Configuración automática antes de Kivy
+	DEFAULT_RESOLUTION: ResolutionKey = 'large'
+	
+	@classmethod
+	def configure_for_mobile(cls, resolution=None):
+		# Configuración automática antes de Kivy
 ```
 
 ### Integración Automática
