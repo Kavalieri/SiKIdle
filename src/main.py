@@ -42,7 +42,12 @@ def setup_logging():
 	ensure_directories()
 	log_file = get_user_data_dir() / "logs" / "sikilde.log"
 
-	# Reconfigurar logging con la ruta correcta y encoding UTF-8
+	# Limpiar handlers existentes para evitar bucles
+	root_logger = logging.getLogger()
+	for handler in root_logger.handlers[:]:
+		root_logger.removeHandler(handler)
+
+	# Configurar logging con handlers específicos
 	logging.basicConfig(
 		level=logging.INFO,
 		format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
@@ -50,8 +55,17 @@ def setup_logging():
 			logging.FileHandler(log_file, encoding="utf-8"),
 			logging.StreamHandler(sys.stdout),
 		],
-		force=True,  # Forzar reconfiguración
+		force=True,
 	)
+
+	# Configurar el logger de Kivy para evitar bucles
+	kivy_logger = logging.getLogger("kivy")
+	kivy_logger.propagate = False
+
+	# Crear un handler específico para Kivy que no cause bucles
+	kivy_handler = logging.FileHandler(log_file, encoding="utf-8")
+	kivy_handler.setFormatter(logging.Formatter("%(asctime)s - KIVY - %(levelname)s - %(message)s"))
+	kivy_logger.addHandler(kivy_handler)
 
 	logging.info(f"Log configurado en: {log_file}")
 
