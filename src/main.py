@@ -26,7 +26,13 @@ from ui.screens.home_screen import HomeScreen
 from ui.screens.settings_screen import SettingsScreen
 from ui.screens.combat_screen import CombatScreen
 from ui.screens.equipment_screen import EquipmentScreen
+from ui.screens.exploration_screen import ExplorationScreen
 from ui.upgrades_screen import UpgradesScreen
+
+# Imports de la nueva interfaz premium
+from ui.integrated_ui_system import IntegratedUIManager, get_ui_manager
+from ui.screens.enhanced_combat_screen import EnhancedCombatScreen
+from ui.world_selection_screen import WorldSelectionScreen
 
 
 def setup_logging():
@@ -95,9 +101,43 @@ class GameApp(App):
 		logging.info("GameApp initialized")
 
 	def build(self):
-		"""Construye la aplicación principal."""
+		"""Construye la aplicación principal con la nueva interfaz premium."""
 		try:
-			# Crear layout principal
+			# Usar el nuevo sistema de UI integrado
+			ui_manager = get_ui_manager()
+			self.main_layout = ui_manager.initialize(self)
+
+			# Mantener referencia al navigation manager para compatibilidad
+			self.navigation_manager = ui_manager
+
+			# Registrar pantallas adicionales si es necesario
+			self._register_additional_screens()
+
+			# Programar inicialización diferida
+			Clock.schedule_once(self._post_init_setup, 0.1)
+
+			self.is_initialized = True
+			logging.info("GameApp build completed successfully with PREMIUM UI")
+
+			return self.main_layout
+
+		except Exception as e:
+			logging.error(f"Error building app with premium UI: {e}")
+			logging.error(format_exc())
+			self.initialization_error = str(e)
+			# Fallback a la interfaz antigua si falla la premium
+			return self._build_fallback_ui()
+
+	def _register_additional_screens(self):
+		"""Registra pantallas adicionales si es necesario."""
+		# El nuevo sistema UI ya incluye las pantallas principales
+		# Aquí podemos agregar pantallas específicas si es necesario
+		pass
+
+	def _build_fallback_ui(self):
+		"""Construye la interfaz antigua como fallback."""
+		try:
+			# Crear layout principal antiguo
 			self.main_layout = MainLayout()
 			self.navigation_manager = self.main_layout.get_navigation_manager()
 
@@ -107,18 +147,11 @@ class GameApp(App):
 			# Configurar navegación inicial
 			self._setup_initial_navigation()
 
-			# Programar inicialización diferida
-			Clock.schedule_once(self._post_init_setup, 0.1)
-
-			self.is_initialized = True
-			logging.info("GameApp build completed successfully")
-
+			logging.info("Fallback UI loaded successfully")
 			return self.main_layout
 
 		except Exception as e:
-			logging.error(f"Error building app: {e}")
-			logging.error(format_exc())
-			self.initialization_error = str(e)
+			logging.error(f"Error building fallback UI: {e}")
 			return self._create_error_widget()
 
 	def _register_screens(self):
@@ -137,6 +170,9 @@ class GameApp(App):
 
 			# Pantallas de gameplay
 			self.navigation_manager.register_screen("combat", CombatScreen)
+
+			# Pantalla de exploración de mazmorras
+			self.navigation_manager.register_screen("exploration", ExplorationScreen)
 
 			# Pantalla de equipamiento
 			def create_equipment_screen(name):
@@ -176,14 +212,14 @@ class GameApp(App):
 	def _setup_initial_navigation(self):
 		"""Configura la navegación inicial."""
 		try:
-			# Navegar a la pantalla principal
-			success = self.navigation_manager.navigate_to("home")
+			# Navegar a Combat como pantalla principal
+			success = self.navigation_manager.navigate_to("combat")
 
 			if not success:
-				logging.warning("Failed to navigate to home, creating home screen manually")
-				home_screen = HomeScreen(name="home")
-				self.navigation_manager.add_widget(home_screen)
-				self.navigation_manager.current = "home"
+				logging.warning("Failed to navigate to combat, creating combat screen manually")
+				combat_screen = CombatScreen(name="combat")
+				self.navigation_manager.add_widget(combat_screen)
+				self.navigation_manager.current = "combat"
 
 			logging.info("Initial navigation setup completed")
 
@@ -194,10 +230,41 @@ class GameApp(App):
 	def _post_init_setup(self, dt):
 		"""Configuración posterior a la inicialización."""
 		try:
+			# CRITICO: Activar debug mode por defecto si está configurado
+			self._setup_debug_mode()
+
 			logging.info("Post-initialization setup completed")
 
 		except Exception as e:
 			logging.error(f"Error in post-init setup: {e}")
+
+	def _setup_debug_mode(self):
+		"""Configura el modo debug basándose en la configuración guardada."""
+		try:
+			from ui.screens.settings_screen import SettingsScreen
+
+			# Crear instancia temporal para acceder a la configuración por defecto
+			temp_settings = SettingsScreen()
+			current_settings = temp_settings.current_settings
+
+			# Verificar si debug mode está activado en configuración
+			debug_enabled = current_settings.get("debug", {}).get("mode_enabled", False)
+
+			if debug_enabled:
+				# Activar debug mode en TabNavigator (NO en NavigationManager)
+				tab_navigator = self.main_layout.get_tab_navigator()
+				if hasattr(tab_navigator, "enable_debug_mode"):
+					tab_navigator.enable_debug_mode()
+					logging.info(
+						"DEBUG MODE: Activado automáticamente al inicio - Todos los menús desbloqueados para desarrollo"
+					)
+				else:
+					logging.warning("TabNavigator no tiene enable_debug_mode")
+			else:
+				logging.info("DEBUG MODE: Desactivado por configuración")
+
+		except Exception as e:
+			logging.error(f"Error setting up debug mode: {e}")
 
 	def _create_error_widget(self) -> Widget:
 		"""Crea un widget de error para mostrar cuando falla la inicialización."""

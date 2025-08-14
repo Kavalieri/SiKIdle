@@ -5,12 +5,15 @@ Gestiona el combate automático entre jugador y enemigos con estadísticas RPG.
 
 from dataclasses import dataclass, field
 from enum import Enum
-from typing import Optional, TYPE_CHECKING
-import time
+from typing import TYPE_CHECKING
+import logging
 import random
+import time
 
 if TYPE_CHECKING:
 	from core.player_stats import PlayerStatsManager
+
+logger = logging.getLogger(__name__)
 
 
 class DamageType(Enum):
@@ -64,7 +67,7 @@ class Player:
 	"""Jugador con sistema avanzado de estadísticas y progresión."""
 
 	# Referencia al sistema de estadísticas completo
-	stats_manager: Optional["PlayerStatsManager"] = None
+	stats_manager: "PlayerStatsManager | None" = None
 
 	# Stats base para casos donde no hay PlayerStatsManager (retrocompatibilidad)
 	base_stats: CombatStats = field(
@@ -80,7 +83,7 @@ class Player:
 	)
 
 	# Bonificaciones de equipamiento (aplicadas desde EquipmentIntegration)
-	equipment_bonuses: dict = field(default_factory=dict)
+	equipment_bonuses: dict[str, float] = field(default_factory=dict)
 
 	def initialize_stats_manager(self):
 		"""Inicializa el gestor de estadísticas si no existe."""
@@ -109,7 +112,7 @@ class Player:
 			return self.stats_manager.level_system.can_level_up()
 		return False
 
-	def get_effective_stats(self, biome_bonuses: Optional[dict] = None) -> CombatStats:
+	def get_effective_stats(self, biome_bonuses: dict[str, float] | None = None) -> CombatStats:
 		"""Calcula las estadísticas finales con bonificaciones de equipamiento y bioma."""
 		if self.stats_manager:
 			# Usar el sistema avanzado de estadísticas con bonificaciones de bioma
@@ -240,7 +243,7 @@ class CombatResult:
 	state: CombatState
 	experience_gained: int = 0
 	gold_gained: int = 0
-	enemy_defeated: Optional[str] = None
+	enemy_defeated: str | None = None
 	damage_dealt: int = 0
 	damage_received: int = 0
 	time_elapsed: float = 0.0
@@ -257,14 +260,14 @@ class CombatManager:
 			player: Instancia del jugador
 		"""
 		self.player = player
-		self.current_enemy: Optional[Enemy] = None
+		self.current_enemy: Enemy | None = None
 		self.combat_state = CombatState.NO_COMBAT
 		self.combat_start_time = 0.0
 		self.last_player_attack = 0.0
 		self.last_enemy_attack = 0.0
 
 		# Bonificaciones de bioma aplicadas
-		self.biome_bonuses: Optional[dict] = None
+		self.biome_bonuses: dict[str, float] | None = None
 
 		# Estadísticas del combate actual
 		self.total_damage_dealt = 0
@@ -293,11 +296,11 @@ class CombatManager:
 
 		print(f"¡Combate iniciado contra {enemy.name} (Nivel {enemy.level})!")
 
-	def set_biome_bonuses(self, bonuses: Optional[dict]) -> None:
+	def set_biome_bonuses(self, bonuses: dict[str, float] | None) -> None:
 		"""Configura las bonificaciones de bioma para el combate."""
 		self.biome_bonuses = bonuses
 
-	def update_combat(self, delta_time: float) -> Optional[CombatResult]:
+	def update_combat(self, delta_time: float) -> CombatResult | None:
 		"""Actualiza el combate automático. Retorna resultado si el combate termina."""
 		if self.combat_state != CombatState.FIGHTING or not self.current_enemy:
 			return None
@@ -380,7 +383,7 @@ class CombatManager:
 
 			self.last_regen_time = current_time
 
-	def _check_combat_end(self) -> Optional[CombatResult]:
+	def _check_combat_end(self) -> CombatResult | None:
 		"""Verifica si el combate ha terminado y retorna el resultado."""
 		current_time = time.time()
 		time_elapsed = current_time - self.combat_start_time
@@ -405,6 +408,8 @@ class CombatManager:
 				print(f"¡Nivel subido! Ahora eres nivel {level}")
 
 			# Llamar callback para registrar derrota de enemigo
+			logger.info(f"DEBUG: Combat manager ID during defeat: {id(self)}")
+			logger.info(f"DEBUG: Callback during defeat: {self.on_enemy_defeated_callback}")
 			if self.on_enemy_defeated_callback:
 				try:
 					# Determinar si era un boss (enemigos de nivel muy alto o con nombre especial)
@@ -413,8 +418,31 @@ class CombatManager:
 						for boss_keyword in ["boss", "chief", "lord", "king", "dragon", "lich"]
 					)
 
-					print(
-						f"*** COMBAT CALLBACK *** Enemigo: {self.current_enemy.name} (lvl {self.current_enemy.level})"
+					# CRITICO: Otorgar cristales por boss derrotado
+					crystals_gained = 0
+					if is_boss:
+						from core.game import get_game_state
+						game_state = get_game_state()
+						
+						# Calcular cristales basados en nivel del boss
+						base_crystals = max(1, self.current_enemy.level // 20)  # 1 cristal cada 20 niveles
+						level_bonus = max(0, (self.current_enemy.level - 50) // 10)  # Bonus por nivel alto
+						crystals_gained = base_crystals + level_bonus
+						
+						# Otorgar cristales al jugador
+						if game_state.prestige_manager:
+							game_state.prestige_manager.prestige_crystals += crystals_gained
+							logger.info(f"*** BOSS REWARD *** {self.current_enemy.name} derrotado → +{crystals_gained} cristales!")
+							print(f"🎉 ¡BOSS DERROTADO! Ganaste {crystals_gained} 💎 cristales!")
+						else:
+							logger.warning("No se pudo otorgar cristales: prestige_manager no disponible")
+
+					logger.info(
+						"*** COMBAT CALLBACK *** Enemigo: %s (lvl %d), Boss: %s, Cristales: %d",
+						self.current_enemy.name,
+						self.current_enemy.level,
+						is_boss,
+						crystals_gained
 					)
 					self.on_enemy_defeated_callback(
 						enemy_type=self.current_enemy.name,
@@ -422,7 +450,9 @@ class CombatManager:
 						is_boss=is_boss,
 					)
 				except Exception as e:
-					print(f"Error en callback de derrota de enemigo: {e}")
+					logger.error("Error en callback de derrota de enemigo: %s", e)
+			else:
+				logger.warning("*** WARNING *** No hay callback establecido para enemigo derrotado")
 
 			result = CombatResult(
 				state=CombatState.PLAYER_VICTORY,

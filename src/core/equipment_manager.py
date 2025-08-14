@@ -69,6 +69,19 @@ class EquipmentManager:
 		# Límites de inventario
 		self.max_inventory_size = 50
 
+		# CRITICO: Referencia al PlayerStatsManager del combat system
+		self.combat_stats_manager = None
+
+	def set_player_stats_manager(self, stats_manager):
+		"""
+		CRITICO: Conecta el EquipmentManager con el PlayerStatsManager del combat system.
+		Esto permite que los stats del equipo afecten realmente el combate.
+		"""
+		self.combat_stats_manager = stats_manager
+		# Actualizar stats inmediatamente si ya tenemos equipment equipado
+		self._update_combat_stats()
+		logger.info("EquipmentManager conectado con PlayerStatsManager - Equipment effects activados para combate")
+
 	def equip_item(self, item: Equipment) -> Optional[Equipment]:
 		"""
 		Equipa un ítem del inventario.
@@ -255,6 +268,33 @@ class EquipmentManager:
 			f"Defense: {self.player_stats.get_total_defense():.1f}, "
 			f"Health: {self.player_stats.get_total_health():.1f}"
 		)
+
+		# CRITICO: Actualizar el PlayerStatsManager del combat system
+		self._update_combat_stats()
+
+	def _update_combat_stats(self):
+		"""
+		CRITICO: Actualiza el PlayerStatsManager del combat system con los stats del equipment.
+		Esto es lo que hace que el equipment realmente afecte el combate.
+		"""
+		if self.combat_stats_manager is None:
+			return
+
+		# Crear el diccionario de bonificaciones para el combat system
+		equipment_bonuses = {
+			'damage_mult': 1.0 + (self.player_stats.equipment_attack / 100.0),  # Ataque como multiplicador
+			'click_mult': 1.0 + (self.player_stats.equipment_attack / 200.0),  # Click damage basado en ataque
+			'critical_chance': self.player_stats.equipment_critical_chance,
+			'critical_damage': self.player_stats.equipment_critical_damage,
+			'defense': self.player_stats.equipment_defense,
+			'health': self.player_stats.equipment_health,
+			'production_bonus': self.player_stats.equipment_production_bonus
+		}
+
+		# Llamar al método del PlayerStatsManager para aplicar las bonificaciones
+		self.combat_stats_manager.update_equipment_bonuses(equipment_bonuses)
+
+		logger.info(f"EQUIPMENT EFFECTS: Combat stats updated with bonuses: {equipment_bonuses}")
 
 	def get_equipment_summary(self) -> Dict:
 		"""Obtiene un resumen del estado del equipamiento."""

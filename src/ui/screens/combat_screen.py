@@ -96,9 +96,19 @@ class CombatScreen(Screen):
 
 		try:
 			self.real_game_state = get_game_state()
+			# Obtener referencia al combat_manager si está disponible
+			if hasattr(self.real_game_state, "combat_manager"):
+				self.combat_manager = self.real_game_state.combat_manager
+				logging.info(
+					f"DEBUG: CombatScreen using CombatManager ID: {id(self.combat_manager)}"
+				)
+			else:
+				self.combat_manager = None
+				logging.warning("No combat_manager found in game_state")
 		except Exception as e:
 			logging.error(f"Error connecting to GameState: {e}")
 			self.real_game_state = None
+			self.combat_manager = None
 
 		# Estado de recursos del jugador (fallback)
 		self.player_gold = 0
@@ -713,6 +723,38 @@ class CombatScreen(Screen):
 
 		enemy = self.current_enemy
 
+		# NUEVO: Llamar al callback del CombatManager si está disponible
+		logging.info(f"DEBUG: _enemy_defeated - self.combat_manager: {self.combat_manager}")
+		if self.combat_manager:
+			logging.info(
+				f"DEBUG: _enemy_defeated - has on_enemy_defeated_callback attr: {hasattr(self.combat_manager, 'on_enemy_defeated_callback')}"
+			)
+			if hasattr(self.combat_manager, "on_enemy_defeated_callback"):
+				logging.info(
+					f"DEBUG: _enemy_defeated - callback value: {self.combat_manager.on_enemy_defeated_callback}"
+				)
+				if self.combat_manager.on_enemy_defeated_callback:
+					try:
+						logging.info("DEBUG: CombatScreen triggering combat manager callback")
+						# Determinar si es un boss
+						is_boss = enemy.level > 50 or any(
+							boss_keyword in enemy.name.lower()
+							for boss_keyword in ["boss", "chief", "lord", "king", "dragon", "lich"]
+						)
+						self.combat_manager.on_enemy_defeated_callback(
+							enemy_type=enemy.name,
+							enemy_level=enemy.level,
+							is_boss=is_boss,
+						)
+					except Exception as e:
+						logging.error(f"Error calling combat manager callback: {e}")
+				else:
+					logging.warning("DEBUG: Callback is None")
+			else:
+				logging.warning("DEBUG: No on_enemy_defeated_callback attribute")
+		else:
+			logging.warning("DEBUG: No combat_manager")
+
 		# Otorgar recompensas al GameState real si está disponible
 		if self.real_game_state:
 			# Añadir recursos al GameState
@@ -922,6 +964,40 @@ class CombatScreen(Screen):
 			return
 
 		enemy = self.current_enemy
+
+		# NUEVO: Llamar al callback del CombatManager si está disponible
+		logging.info(
+			f"DEBUG: _enemy_defeated (second method) - self.combat_manager: {self.combat_manager}"
+		)
+		if self.combat_manager:
+			logging.info(
+				f"DEBUG: _enemy_defeated - has on_enemy_defeated_callback attr: {hasattr(self.combat_manager, 'on_enemy_defeated_callback')}"
+			)
+			if hasattr(self.combat_manager, "on_enemy_defeated_callback"):
+				logging.info(
+					f"DEBUG: _enemy_defeated - callback value: {self.combat_manager.on_enemy_defeated_callback}"
+				)
+				if self.combat_manager.on_enemy_defeated_callback:
+					try:
+						logging.info("DEBUG: CombatScreen triggering combat manager callback")
+						# Determinar si es un boss
+						is_boss = enemy.level > 50 or any(
+							boss_keyword in enemy.name.lower()
+							for boss_keyword in ["boss", "chief", "lord", "king", "dragon", "lich"]
+						)
+						self.combat_manager.on_enemy_defeated_callback(
+							enemy_type=enemy.name,
+							enemy_level=enemy.level,
+							is_boss=is_boss,
+						)
+					except Exception as e:
+						logging.error(f"Error calling combat manager callback: {e}")
+				else:
+					logging.warning("DEBUG: Callback is None")
+			else:
+				logging.warning("DEBUG: No on_enemy_defeated_callback attribute")
+		else:
+			logging.warning("DEBUG: No combat_manager")
 
 		# Otorgar recompensas
 		self.player_gold += enemy.gold_reward

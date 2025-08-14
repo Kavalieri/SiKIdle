@@ -14,7 +14,7 @@ from core.buildings import BuildingManager
 from core.upgrades import UpgradeManager
 from core.achievements import AchievementManager
 from core.inventory import Inventory
-from core.dungeons import DungeonManager
+from core.worlds import WorldManager
 from core.combat import CombatManager
 from core.player_stats import PlayerStatsManager
 from core.equipment_manager import EquipmentManager
@@ -44,34 +44,44 @@ class GameState:
 		# Sistema de inventario y loot
 		self.inventory = Inventory()
 
-		# Nuevos sistemas: Combat y Mazmorras
+		# Nuevos sistemas: Combat y Mundos
 		self.player_stats = PlayerStatsManager()
 		from core.combat import Player
 
 		self.player = Player(stats_manager=self.player_stats)
 		self.combat_manager = CombatManager(self.player)
-		self.dungeon_manager = DungeonManager(self.resource_manager)
+		self.world_manager = WorldManager(self.resource_manager)
 
-		# Sistema de equipamiento
+		# Sistema de equipamiento - CONECTADO al sistema de stats del combate
 		self.equipment_manager = EquipmentManager()
+		# CRITICO: Conectar equipment manager con player stats para que los stats afecten combate
+		self.equipment_manager.set_player_stats_manager(self.player_stats)
 
-		# Sistema de desbloqueo avanzado de mazmorras
-		from core.dungeon_unlock import DungeonUnlockManager
-
-		self.unlock_manager = DungeonUnlockManager(self.dungeon_manager, self.resource_manager)
+		# Sistema de desbloqueo avanzado de mundos (temporalmente deshabilitado)
+		# TODO: Crear WorldUnlockManager para reemplazar DungeonUnlockManager
+		# from core.dungeon_unlock import DungeonUnlockManager
+		# self.unlock_manager = DungeonUnlockManager(self.world_manager, self.resource_manager)
+		self.unlock_manager = None  # Temporalmente deshabilitado
 
 		# Sistema de loot y generación
 		from core.loot import LootGenerator
 		from core.loot_combat_integration import LootCombatIntegration
+		from core.biomes import BiomeManager
 
 		self.loot_generator = LootGenerator()
+		# Crear BiomeManager temporal hasta integrar completamente con WorldManager
+		self.biome_manager = BiomeManager()
 		self.loot_combat_integration = LootCombatIntegration(
 			combat_manager=self.combat_manager,
 			loot_generator=self.loot_generator,
 			inventory=self.inventory,
-			biome_manager=self.dungeon_manager.biome_manager,
+			biome_manager=self.biome_manager,
 			game_state=self,  # Pasamos self para callbacks adicionales
 		)
+
+		# Bridge: Conectar el sistema viejo (Inventory) con el nuevo (EquipmentManager)
+		# Cuando se añada un item al inventory viejo, también añadirlo al nuevo
+		self._setup_inventory_bridge()
 
 		# NOTA: No sobreescribir el callback del loot_combat_integration
 		# El LootCombatIntegration ya maneja su propio callback automáticamente
@@ -167,9 +177,92 @@ class GameState:
 		# Sincronizar datos de prestigio con el manager
 		self._sync_prestige_data()
 
-		logging.info(
-			"Juego inicializado: %d monedas, %d clics totales", self.coins, self.total_clicks
-		)
+		# Verificar sistemas de datos disponibles
+		logging.info(f"Juego inicializado: {self.coins} monedas, {self.total_clicks} clics totales")
+
+	def _setup_inventory_bridge(self):
+		"""
+		Configura un bridge entre el sistema viejo (Inventory) y el nuevo (EquipmentManager).
+		Cuando se añada un LootItem al inventory viejo, también se convierte y se añade al nuevo.
+		"""
+		# Guardar el método original add_item del inventory
+		original_add_item = self.inventory.add_item
+
+		def bridged_add_item(loot_item):
+			"""Método bridged que añade al sistema viejo Y al nuevo"""
+			# Añadir al sistema viejo (para compatibilidad)
+			success_old = original_add_item(loot_item)
+
+			# Si se añadió exitosamente al sistema viejo, también añadir al nuevo
+			if success_old:
+				try:
+					# Convertir LootItem a Equipment
+					equipment = self._convert_loot_item_to_equipment(loot_item)
+					if equipment:
+						# Añadir al EquipmentManager
+						success_new = self.equipment_manager.add_to_inventory(equipment)
+						if success_new:
+							logging.info(
+								f"BRIDGE: LootItem '{loot_item.get_display_name()}' añadido también a EquipmentManager"
+							)
+						else:
+							logging.warning(
+								f"BRIDGE: No se pudo añadir al EquipmentManager: {loot_item.get_display_name()}"
+							)
+				except Exception as e:
+					logging.error(f"BRIDGE: Error convirtiendo loot item: {e}")
+
+			return success_old
+
+		# Reemplazar el método add_item con el bridged
+		self.inventory.add_item = bridged_add_item
+		logging.info("BRIDGE: Sistema de bridge Inventory → EquipmentManager configurado")
+
+	def _convert_loot_item_to_equipment(self, loot_item):
+		"""
+		Convierte un LootItem (sistema viejo) a Equipment (sistema nuevo).
+		"""
+		try:
+			from core.equipment import Equipment, EquipmentType, Rarity
+
+			# Mapear tipos de loot a tipos de equipment
+			type_mapping = {
+				"weapon": EquipmentType.WEAPON,
+				"artifact": EquipmentType.JEWELRY,
+				"gem": EquipmentType.JEWELRY,
+				"material": EquipmentType.JEWELRY,  # Default fallback
+			}
+
+			# Mapear rarezas
+			rarity_mapping = {
+				"common": Rarity.COMMON,
+				"rare": Rarity.RARE,
+				"epic": Rarity.EPIC,
+				"legendary": Rarity.LEGENDARY,
+			}
+
+			# Determinar tipo de equipment
+			equipment_type = type_mapping.get(loot_item.loot_type.value, EquipmentType.JEWELRY)
+			rarity = rarity_mapping.get(loot_item.rarity.value, Rarity.COMMON)
+
+			# Crear equipment
+			equipment = Equipment(equipment_type, level=1, rarity=rarity)
+			equipment.name = loot_item.name
+
+			# Transferir stats básicos
+			if hasattr(loot_item, "stats") and loot_item.stats:
+				equipment.stats.attack = loot_item.stats.get("damage", 0)
+				equipment.stats.defense = loot_item.stats.get("defense", 0)
+				equipment.stats.health = loot_item.stats.get("health", 0)
+				equipment.stats.critical_chance = loot_item.stats.get("critical_chance", 0)
+				equipment.stats.critical_damage = loot_item.stats.get("critical_damage", 0)
+				equipment.stats.production_bonus = loot_item.stats.get("production_bonus", 0)
+
+			return equipment
+
+		except Exception as e:
+			logging.error(f"Error convirtiendo LootItem a Equipment: {e}")
+			return None
 
 	def start_game(self) -> None:
 		"""Inicia el juego y comienza el guardado automático."""
@@ -620,12 +713,12 @@ class GameState:
 			"talent_points": self.talent_points,
 			"total_talent_points_earned": self.total_talent_points_earned,
 			"talents": self.talents.copy(),
-			# Datos de combat y mazmorras
+			# Datos de combat y mundos
 			"combat_stats": self.player_stats.get_save_data()
 			if hasattr(self.player_stats, "get_save_data")
 			else {},
-			"dungeon_progress": self.dungeon_manager.get_save_data()
-			if hasattr(self.dungeon_manager, "get_save_data")
+			"world_progress": self.world_manager.save_progress()
+			if hasattr(self.world_manager, "save_progress")
 			else {},
 			"inventory": self.inventory.get_save_data()
 			if hasattr(self.inventory, "get_save_data")
@@ -693,12 +786,17 @@ class GameState:
 			except Exception as e:
 				logging.warning(f"Error cargando stats de combat: {e}")
 
-		# Cargar progreso de mazmorras si existe
-		if "dungeon_progress" in saved_state and hasattr(self.dungeon_manager, "load_save_data"):
+		# Cargar progreso de mundos si existe
+		if "world_progress" in saved_state and hasattr(self.world_manager, "load_progress"):
 			try:
-				self.dungeon_manager.load_save_data(saved_state["dungeon_progress"])
+				self.world_manager.load_progress(saved_state["world_progress"])
 			except Exception as e:
-				logging.warning(f"Error cargando progreso de mazmorras: {e}")
+				logging.warning(f"Error cargando progreso de mundos: {e}")
+
+		# Compatibilidad: cargar progreso de mazmorras antiguo si existe
+		elif "dungeon_progress" in saved_state:
+			logging.info("Detectado progreso de mazmorras antiguo - migrando a sistema de mundos")
+			# TODO: Implementar migración de mazmorras a mundos
 
 		# Cargar inventario si existe
 		if "inventory" in saved_state and hasattr(self.inventory, "load_save_data"):
@@ -1000,25 +1098,56 @@ class GameState:
 		except Exception as e:
 			logging.error("Error sincronizando bonificaciones de bioma: %s", e)
 
-	def update_active_dungeon(self, dungeon_type) -> bool:
+	def sync_world_bonuses_to_combat(self) -> None:
 		"""
-		Actualiza la mazmorra activa y sincroniza bonificaciones de bioma.
+		Sincroniza las bonificaciones del mundo activo con el sistema de combate.
+
+		Esto asegura que las bonificaciones del mundo activo se apliquen
+		correctamente al combate del jugador.
+		"""
+		try:
+			# Obtener información del mundo activo
+			active_world = self.world_manager.get_active_world()
+			if not active_world:
+				return
+
+			# Obtener multiplicadores del mundo actual
+			difficulty_mult = active_world.get_level_difficulty_multiplier()
+			rewards_mult = active_world.get_level_rewards_multiplier()
+
+			# Aplicar bonificaciones al sistema de combate
+			if hasattr(self.combat_manager, "apply_world_bonuses"):
+				world_bonuses = {
+					"difficulty_multiplier": difficulty_mult,
+					"rewards_multiplier": rewards_mult,
+					"special_mechanic": active_world.info.special_mechanic,
+				}
+				self.combat_manager.apply_world_bonuses(world_bonuses)
+
+			logging.info(f"Bonificaciones de mundo sincronizadas para {active_world.info.name}")
+
+		except Exception as e:
+			logging.error("Error sincronizando bonificaciones de mundo: %s", e)
+
+	def update_active_world(self, world_type) -> bool:
+		"""
+		Actualiza el mundo activo y sincroniza bonificaciones.
 
 		Args:
-			dungeon_type: Tipo de mazmorra a activar
+			world_type: Tipo de mundo a activar
 
 		Returns:
 			True si el cambio fue exitoso
 		"""
 		try:
-			# Cambiar mazmorra activa
-			if self.dungeon_manager.set_active_dungeon(dungeon_type):
-				# Sincronizar bonificaciones de bioma automáticamente
-				self.sync_biome_bonuses_to_combat()
+			# Cambiar mundo activo
+			if self.world_manager.set_active_world(world_type):
+				# Sincronizar bonificaciones de mundo automáticamente
+				self.sync_world_bonuses_to_combat()
 				return True
 			return False
 		except Exception as e:
-			logging.error("Error actualizando mazmorra activa: %s", e)
+			logging.error("Error actualizando mundo activo: %s", e)
 			return False
 
 	def register_enemy_defeat(self, enemy_type, enemy_level: int, is_boss: bool = False) -> None:
@@ -1082,33 +1211,29 @@ class GameState:
 			logging.error("Error verificando desbloqueos: %s", e)
 			return {}
 
-	def attempt_dungeon_unlock(self, dungeon_type) -> Dict[str, Any]:
+	def attempt_world_unlock(self, world_type) -> Dict[str, Any]:
 		"""
-		Intenta desbloquear una mazmorra específica.
+		Intenta desbloquear un mundo específico.
 
 		Args:
-			dungeon_type: Tipo de mazmorra a desbloquear
+			world_type: Tipo de mundo a desbloquear
 
 		Returns:
 			Resultado del intento de desbloqueo
 		"""
 		try:
 			player_level = self.player_stats.get_level()
-			player_stats = {
-				"level": player_level,
-				"total_experience": self.player_stats.get_total_experience(),
-			}
 
-			result = self.unlock_manager.attempt_unlock(dungeon_type, player_level, player_stats)
+			result = self.world_manager.unlock_world(world_type, player_level)
 
 			# Si se desbloqueó exitosamente, sincronizar bonificaciones
 			if result.get("success"):
-				self.sync_biome_bonuses_to_combat()
+				self.sync_world_bonuses_to_combat()
 
 			return result
 		except Exception as e:
-			logging.error("Error intentando desbloquear mazmorra: %s", e)
-			return {"success": False, "message": "Error interno", "hints": []}
+			logging.error("Error intentando desbloquear mundo: %s", e)
+			return {"success": False, "message": "Error interno"}
 
 	def get_unlock_hints(self, dungeon_type) -> List[str]:
 		"""
@@ -1313,6 +1438,13 @@ class GameState:
 _game_state: GameState | None = None
 
 
+def set_global_game_state(game_state: GameState) -> None:
+	"""Establece la instancia global del estado del juego."""
+	global _game_state
+	_game_state = game_state
+	logging.info(f"DEBUG: Set global GameState instance ID: {id(_game_state)}")
+
+
 def get_game_state() -> GameState:
 	"""Obtiene la instancia global del estado del juego.
 
@@ -1322,4 +1454,7 @@ def get_game_state() -> GameState:
 	global _game_state
 	if _game_state is None:
 		_game_state = GameState()
+		logging.info(f"DEBUG: Created NEW global GameState instance ID: {id(_game_state)}")
+	else:
+		logging.info(f"DEBUG: Returning existing global GameState instance ID: {id(_game_state)}")
 	return _game_state

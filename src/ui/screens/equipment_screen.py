@@ -3,6 +3,7 @@ Pantalla de Equipamiento para SiKIdle
 Interfaz de usuario para gestionar equipamiento e inventario
 """
 
+import logging
 from kivy.uix.boxlayout import BoxLayout
 from kivy.uix.gridlayout import GridLayout
 from kivy.uix.button import Button
@@ -378,8 +379,10 @@ class EquipmentScreen(Screen):
 		content.add_widget(equip_btn)
 
 		# Eliminar ítem
-		delete_btn = Button(text="Eliminar", size_hint=(1, 0.25))
-		delete_btn.bind(on_press=lambda x: self._delete_item(item_widget.equipment))
+		delete_btn = Button(
+			text="Vender por Oro", size_hint=(1, 0.25), background_color=(1.0, 0.8, 0.2, 1)
+		)
+		delete_btn.bind(on_press=lambda x: self._sell_item(item_widget.equipment))
 		content.add_widget(delete_btn)
 
 		# Botón cerrar
@@ -422,6 +425,61 @@ class EquipmentScreen(Screen):
 			if isinstance(child, Popup):
 				child.dismiss()
 
+	def _sell_item(self, equipment: Equipment):
+		"""Vende un ítem por oro."""
+		# Calcular precio de venta basado en poder del ítem
+		sell_price = max(1, int(equipment.stats.get_total_power() * 0.5))
+
+		# Intentar obtener el GameState para añadir oro
+		try:
+			from core.game import get_game_state
+
+			game_state = get_game_state()
+
+			# Añadir oro al jugador
+			game_state.coins += sell_price
+
+			# Remover ítem del inventario
+			self.equipment_manager.remove_from_inventory(equipment)
+
+			# Mostrar notificación de venta
+			self._show_sell_notification(equipment, sell_price)
+
+		except Exception as e:
+			logging.error(f"Error vendiendo ítem: {e}")
+
+		# Cerrar cualquier popup abierto
+		for child in self.get_root_window().children[:]:
+			if isinstance(child, Popup):
+				child.dismiss()
+
+	def _show_sell_notification(self, equipment: Equipment, gold_earned: int):
+		"""Muestra una notificación de venta exitosa."""
+		content = BoxLayout(orientation="vertical", spacing=10, padding=10)
+
+		message = Label(
+			text=f"[size=16][b]💰 Ítem Vendido[/b][/size]\n\n"
+			f"Has vendido:\n{equipment.get_display_name()}\n\n"
+			f"[color=gold]+{gold_earned} Oro[/color]",
+			markup=True,
+			halign="center",
+			valign="center",
+		)
+		content.add_widget(message)
+
+		close_btn = Button(text="Continuar", size_hint=(1, 0.2))
+
+		popup = Popup(
+			title="Venta Exitosa", content=content, size_hint=(0.5, 0.4), auto_dismiss=False
+		)
+		close_btn.bind(on_press=popup.dismiss)
+		content.add_widget(close_btn)
+
+		popup.open()
+
+		# Auto-cerrar después de 2 segundos
+		Clock.schedule_once(lambda dt: popup.dismiss(), 2.0)
+
 	def add_generated_loot(self, loot: list[Equipment]):
 		"""Añade loot generado al inventario."""
 		added_items = []
@@ -436,6 +494,10 @@ class EquipmentScreen(Screen):
 		# Mostrar notificación de loot si se añadieron ítems
 		if added_items:
 			self._show_loot_notification(added_items)
+
+	def on_enter(self):
+		"""Se ejecuta al entrar en la pantalla."""
+		self._update_display()
 
 	def _show_loot_notification(self, items: list[Equipment]):
 		"""Muestra una notificación de loot obtenido."""

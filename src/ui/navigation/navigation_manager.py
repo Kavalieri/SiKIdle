@@ -1,13 +1,5 @@
 """
-NavigationManager - Sistema de navegación centr	BUTTON_TEXTS = {
-		ScreenType.HOME: "🏠\nIdle",
-		ScreenType.COMBAT: "⚔️\nCombat",
-		ScreenType.EQUIPMENT: "🎒\nEquipo",
-		ScreenType.UPGRADES: "⬆️\nMejoras",
-		ScreenType.ACHIEVEMENTS: "🏆\nLogros",
-		ScreenType.SHOP: "💎\nTienda",
-		ScreenType.SETTINGS: "⚙️\nConfig",
-	}SiKIdle.
+NavigationManager - Sistema de navegación centralizado para SiKIdle.
 
 Gestor principal de navegación con stack navigation, transiciones fluidas
 y gestión de estado entre pantallas.
@@ -43,6 +35,7 @@ class ScreenType(Enum):
 	HOME = "home"
 	COMBAT = "combat"
 	EQUIPMENT = "equipment"
+	EXPLORATION = "exploration"
 	UPGRADES = "upgrades"
 	ACHIEVEMENTS = "achievements"
 	SHOP = "shop"
@@ -60,6 +53,7 @@ class NavigationButton(Button):
 	BUTTON_CONFIGS = {
 		ScreenType.HOME: "🏠\nIdle",
 		ScreenType.COMBAT: "⚔️\nCombat",
+		ScreenType.EXPLORATION: "🗺️\nMazmorras",
 		ScreenType.UPGRADES: "⬆️\nMejoras",
 		ScreenType.ACHIEVEMENTS: "🏆\nLogros",
 		ScreenType.SHOP: "💎\nTienda",
@@ -112,9 +106,9 @@ class TabNavigator(BoxLayout):
 
 	# Condiciones de desbloqueo
 	UNLOCK_CONDITIONS = {
-		ScreenType.HOME: lambda: True,  # Siempre disponible
-		ScreenType.COMBAT: lambda: True,  # Disponible desde inicio
+		ScreenType.COMBAT: lambda: True,  # Disponible desde inicio - pantalla principal
 		ScreenType.EQUIPMENT: lambda: TabNavigator._check_equipment_unlocked(),
+		ScreenType.EXPLORATION: lambda: True,  # Disponible desde inicio
 		ScreenType.UPGRADES: lambda: TabNavigator._check_buildings_bought(),
 		ScreenType.ACHIEVEMENTS: lambda: TabNavigator._check_first_prestige(),
 		ScreenType.SHOP: lambda: TabNavigator._check_shop_unlock(),
@@ -144,10 +138,10 @@ class TabNavigator(BoxLayout):
 
 	def _build_navigation_bar(self):
 		"""Construye la barra de navegación."""
-		# Pantallas principales del tab navigator
+		# Pantallas principales del tab navigator - Combat como centro del juego
 		main_screens = [
-			ScreenType.HOME,
 			ScreenType.COMBAT,
+			ScreenType.EXPLORATION,
 			ScreenType.UPGRADES,
 			ScreenType.ACHIEVEMENTS,
 			ScreenType.SHOP,
@@ -158,7 +152,7 @@ class TabNavigator(BoxLayout):
 			btn = NavigationButton(screen_type)
 			btn.bind(on_press=lambda x, st=screen_type: self._on_tab_pressed(st))
 
-			# Sistema de desbloqueo: solo Home, Combat y Settings disponibles inicialmente
+			# Sistema de desbloqueo: solo Combat, Exploration y Settings disponibles inicialmente
 			if screen_type in [ScreenType.UPGRADES, ScreenType.ACHIEVEMENTS, ScreenType.SHOP]:
 				btn.disabled = True
 				btn.background_color = (0.3, 0.3, 0.3, 1)  # Gris bloqueado
@@ -168,8 +162,8 @@ class TabNavigator(BoxLayout):
 			self.nav_buttons[screen_type] = btn
 			self.add_widget(btn)
 
-		# Activar primera pestaña por defecto
-		self._set_active_tab(ScreenType.HOME)
+		# Activar Combat como pestaña principal por defecto
+		self._set_active_tab(ScreenType.COMBAT)
 
 	def _setup_styling(self):
 		"""Configura el estilo de la barra de navegación."""
