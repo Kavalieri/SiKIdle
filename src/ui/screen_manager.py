@@ -14,20 +14,20 @@ from typing import Any, Optional
 
 class SiKIdleMainContainer(FloatLayout):
 	"""Contenedor principal simplificado sin menú lateral."""
-	
+
 	def __init__(self, game_state=None, **kwargs: Any):
 		"""Inicializa el contenedor principal."""
 		super().__init__(**kwargs)
-		
+
 		# Crear solo el screen manager
 		self.screen_manager = SiKIdleScreenManager(game_state=game_state)
 		self.add_widget(self.screen_manager)
-		
+
 		logging.info("Contenedor principal inicializado sin menú lateral")
-	
-	def get_screen_manager(self) -> 'SiKIdleScreenManager':
+
+	def get_screen_manager(self) -> "SiKIdleScreenManager":
 		"""Retorna la referencia al screen manager.
-		
+
 		Returns:
 			SiKIdleScreenManager: Gestor de pantallas
 		"""
@@ -54,7 +54,11 @@ class SiKIdleScreenManager(ScreenManager):
 		self.upgrades_screen = None
 		self.buildings_screen = None
 		self.achievements_screen = None
-		
+		self.prestige_screen = None
+		self.talents_screen = None
+		self.dungeons_screen = None
+		self.inventory_screen = None
+
 		# Estado del juego
 		self.game_state = game_state
 
@@ -70,37 +74,45 @@ class SiKIdleScreenManager(ScreenManager):
 		from ui.upgrades_screen import UpgradesScreen
 		from ui.buildings_screen import BuildingsScreen
 		from ui.achievements_screen import AchievementsScreen
+		from ui.prestige_screen import PrestigeScreen
+		from ui.talents_screen import TalentsScreen
+		from ui.dungeons_screen import DungeonsScreen
+		from ui.inventory_screen import InventoryScreen
 
 		# Crear e inicializar pantallas
-		self.loading_screen = LoadingScreen(name='loading')
-		self.start_screen = StartScreen(name='start')
-		self.main_screen = MainScreen(name='main')
-		self.settings_screen = SettingsScreen(name='settings')
-		self.stats_screen = StatsScreen(name='stats')
-		
+		self.loading_screen = LoadingScreen(name="loading")
+		self.start_screen = StartScreen(name="start")
+		self.main_screen = MainScreen(name="main")
+		self.settings_screen = SettingsScreen(name="settings")
+		self.stats_screen = StatsScreen(name="stats")
+
 		# Crear pantalla de mejoras con manejo de errores
 		try:
-			self.upgrades_screen = UpgradesScreen(name='upgrades')
+			self.upgrades_screen = UpgradesScreen(name="upgrades")
 			logging.info("Pantalla de mejoras creada exitosamente")
 		except Exception as e:
 			logging.error(f"Error creando pantalla de mejoras: {e}")
 			# Crear pantalla de respaldo
 			from kivy.uix.label import Label
 			from kivy.uix.screenmanager import Screen
-			fallback_screen = Screen(name='upgrades')
+
+			fallback_screen = Screen(name="upgrades")
 			fallback_screen.add_widget(Label(text=f"Error en mejoras: {e}"))
 			self.upgrades_screen = fallback_screen
-		
+
 		self.buildings_screen = BuildingsScreen(
-			name='buildings', 
-			game_state=self.game_state, 
-			manager_ref=self
+			name="buildings", game_state=self.game_state, manager_ref=self
 		)
-		
-		self.achievements_screen = AchievementsScreen(
-			name='achievements',
-			manager_ref=self
-		)
+
+		self.achievements_screen = AchievementsScreen(manager_ref=self)
+
+		self.prestige_screen = PrestigeScreen(manager_ref=self)
+
+		self.talents_screen = TalentsScreen(manager_ref=self, game_state=self.game_state)
+
+		self.dungeons_screen = DungeonsScreen(name="dungeons")
+
+		self.inventory_screen = InventoryScreen(game_state=self.game_state)
 
 		# Añadir pantallas al gestor
 		self.add_widget(self.loading_screen)
@@ -111,60 +123,88 @@ class SiKIdleScreenManager(ScreenManager):
 		self.add_widget(self.upgrades_screen)
 		self.add_widget(self.buildings_screen)
 		self.add_widget(self.achievements_screen)
+		self.add_widget(self.prestige_screen)
+		self.add_widget(self.talents_screen)
+		self.add_widget(self.dungeons_screen)
+		self.add_widget(self.inventory_screen)
 
 		logging.info("Todas las pantallas añadidas al gestor")
 
 	def show_loading(self):
 		"""Muestra la pantalla de carga."""
-		self.current = 'loading'
+		self.current = "loading"
 		if self.loading_screen:
 			self.loading_screen.start_loading()
 
 	def show_start(self):
 		"""Muestra la pantalla de inicio."""
-		self.current = 'start'
+		self.current = "start"
 		if self.start_screen:
 			self.start_screen.on_enter()
 
 	def show_main_game(self):
 		"""Muestra la pantalla principal del juego."""
-		self.current = 'main'
+		self.current = "main"
 		if self.main_screen:
 			self.main_screen.on_enter()
 
 	def show_settings(self):
 		"""Muestra la pantalla de configuración."""
-		self.current = 'settings'
+		self.current = "settings"
 		if self.settings_screen:
 			self.settings_screen.on_enter()
 
 	def show_stats(self):
 		"""Muestra la pantalla de estadísticas."""
-		self.current = 'stats'
+		self.current = "stats"
 		if self.stats_screen:
 			self.stats_screen.on_enter()
 
 	def show_upgrades(self):
 		"""Muestra la pantalla de mejoras."""
-		self.current = 'upgrades'
+		self.current = "upgrades"
 		if self.upgrades_screen:
 			self.upgrades_screen.on_enter()
 
+	def show_dungeons(self):
+		"""Muestra la pantalla de mazmorras."""
+		self.current = "dungeons"
+		if self.dungeons_screen:
+			self.dungeons_screen.on_enter()
+
 	def show_achievements(self):
 		"""Muestra la pantalla de logros."""
-		self.current = 'achievements'
+		self.current = "achievements"
 		if self.achievements_screen:
 			self.achievements_screen.on_enter()
+
+	def show_prestige(self):
+		"""Muestra la pantalla de prestigio."""
+		self.current = "prestige"
+		if self.prestige_screen:
+			self.prestige_screen.on_enter()
+
+	def show_talents(self):
+		"""Muestra la pantalla de talentos."""
+		self.current = "talents"
+		if self.talents_screen:
+			self.talents_screen.update_display()
+
+	def show_inventory(self):
+		"""Muestra la pantalla de inventario."""
+		self.current = "inventory"
+		if self.inventory_screen:
+			self.inventory_screen._update_display()
 
 	def go_back(self):
 		"""Navega hacia atrás según la pantalla actual."""
 		current = self.current
 
-		if current == 'main':
+		if current == "main":
 			self.show_start()
-		elif current in ['settings', 'stats']:
+		elif current in ["settings", "stats"]:
 			self.show_start()
-		elif current in ['upgrades', 'buildings', 'achievements']:
+		elif current in ["upgrades", "buildings", "achievements", "prestige", "talents"]:
 			self.show_main_game()
 		else:
 			# Por defecto ir a inicio
@@ -176,14 +216,14 @@ class SiKIdleScreenManager(ScreenManager):
 class SiKIdleScreen(Screen):
 	"""Clase base para todas las pantallas de SiKIdle."""
 
-	def __init__(self, **kwargs):
+	def __init__(self, name=None, manager_ref=None, **kwargs):
 		"""Inicializa la pantalla base."""
-		super().__init__(**kwargs)
-		self.manager_ref = None
+		super().__init__(name=name, **kwargs)
+		self.manager_ref = manager_ref
 
 	def set_manager_reference(self, manager: SiKIdleScreenManager):
 		"""Establece referencia al gestor de pantallas.
-		
+
 		Args:
 			manager: Referencia al gestor principal
 		"""
@@ -199,22 +239,24 @@ class SiKIdleScreen(Screen):
 
 	def navigate_to(self, screen_name: str):
 		"""Navega a una pantalla específica.
-		
+
 		Args:
 			screen_name: Nombre de la pantalla destino
 		"""
 		if self.manager_ref:
-			if screen_name == 'start':
+			if screen_name == "start":
 				self.manager_ref.show_start()
-			elif screen_name == 'main':
+			elif screen_name == "main":
 				self.manager_ref.show_main_game()
-			elif screen_name == 'settings':
+			elif screen_name == "settings":
 				self.manager_ref.show_settings()
-			elif screen_name == 'stats':
+			elif screen_name == "stats":
 				self.manager_ref.show_stats()
-			elif screen_name == 'upgrades':
+			elif screen_name == "upgrades":
 				self.manager_ref.show_upgrades()
-			elif screen_name == 'achievements':
+			elif screen_name == "dungeons":
+				self.manager_ref.show_dungeons()
+			elif screen_name == "achievements":
 				self.manager_ref.show_achievements()
 		else:
 			logging.warning(f"No se puede navegar a {screen_name}: sin referencia al manager")
@@ -226,7 +268,7 @@ class SiKIdleScreen(Screen):
 
 	def schedule_update(self, callback, interval: float = 1.0):
 		"""Programa una actualización periódica.
-		
+
 		Args:
 			callback: Función a llamar periódicamente
 			interval: Intervalo en segundos
@@ -235,7 +277,7 @@ class SiKIdleScreen(Screen):
 
 	def unschedule_update(self, callback):
 		"""Cancela una actualización programada.
-		
+
 		Args:
 			callback: Función a cancelar
 		"""

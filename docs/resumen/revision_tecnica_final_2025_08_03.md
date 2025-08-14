@@ -33,10 +33,10 @@ SiKIdle es un idle clicker 2D completamente funcional desarrollado en Python con
 - **Creación automática**: Se inicializa automáticamente si no existe
 - **Migración implementada**: Sistema automático de actualización de esquema
 - **Estructura validada**: 
-  - `player` (id, coins, total_clicks, multiplier, last_saved, total_playtime)
-  - `upgrades` (upgrade_id, name, level, base_cost, current_cost, unlocked, description)
-  - `settings` (key, value)
-  - `stats` (key, value)
+- `player` (id, coins, total_clicks, multiplier, last_saved, total_playtime)
+- `upgrades` (upgrade_id, name, level, base_cost, current_cost, unlocked, description)
+- `settings` (key, value)
+- `stats` (key, value)
 - **Validación pre-persistencia**: Datos validados antes de guardado
 - **Sin datos externos**: Toda persistencia centralizada en SQLite
 
@@ -137,10 +137,10 @@ android.orientation = portrait
 ```python
 # Puntos de integración AdMob identificados
 def on_ad_button(self, instance):
-    # TODO: AdMob integration here
-    # Llamar AdMob rewarded video
-    # En callback de éxito:
-    self.game_state.apply_ad_bonus(2.0, 30)
+	# TODO: AdMob integration here
+	# Llamar AdMob rewarded video
+	# En callback de éxito:
+	self.game_state.apply_ad_bonus(2.0, 30)
 ```
 
 ### Recompensas Implementadas

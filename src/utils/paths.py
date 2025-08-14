@@ -29,3 +29,10 @@ def ensure_directories():
 
 	for directory in directories:
 		directory.mkdir(parents=True, exist_ok=True)
+
+
+def get_assets_path():
+	"""Obtiene el directorio de assets del juego."""
+	# Obtener directorio del script actual
+	current_dir = Path(__file__).parent.parent
+	return current_dir / "assets"

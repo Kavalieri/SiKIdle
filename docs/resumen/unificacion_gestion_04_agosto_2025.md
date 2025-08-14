@@ -11,28 +11,28 @@
 ### 1. Eliminación del Menú Lateral ❌
 - **Archivo modificado**: `src/ui/screen_manager.py`
 - **Cambios principales**:
-  - Eliminado `SideMenu` del contenedor principal
-  - Simplificado `SiKIdleMainContainer` para contener solo el `ScreenManager`
-  - Removidas todas las referencias al menú lateral
-  - Método `on_menu_button` redirige ahora a configuración
+- Eliminado `SideMenu` del contenedor principal
+- Simplificado `SiKIdleMainContainer` para contener solo el `ScreenManager`
+- Removidas todas las referencias al menú lateral
+- Método `on_menu_button` redirige ahora a configuración
 
 ### 2. Unificación de Interfaz de Gestión 🏗️
 - **Archivo modificado**: `src/ui/upgrades_screen.py`
 - **Cambios principales**:
-  - Título cambiado a "🏗️ GESTIÓN PRINCIPAL"
-  - Agregada pestaña de edificios como primera pestaña
-  - Implementado `_create_buildings_content()` para mostrar edificios
-  - Implementado `_create_building_widget()` para widgets individuales de edificios
-  - Agregado `on_building_button()` para compra de edificios
+- Título cambiado a "🏗️ GESTIÓN PRINCIPAL"
+- Agregada pestaña de edificios como primera pestaña
+- Implementado `_create_buildings_content()` para mostrar edificios
+- Implementado `_create_building_widget()` para widgets individuales de edificios
+- Agregado `on_building_button()` para compra de edificios
 
 ### 3. Simplificación de Navegación Principal 🎮
 - **Archivo modificado**: `src/ui/main_screen.py`
 - **Cambios principales**:
-  - Eliminado botón "🏭 Edificios" independiente
-  - Eliminado botón "⬆️ Mejoras" independiente
-  - Agregado botón único "🏗️ Gestión" que incluye mejoras + edificios
-  - Agregado botón "📊 Estadísticas" separado
-  - Botón de menú (☰) redirige a configuración
+- Eliminado botón "🏭 Edificios" independiente
+- Eliminado botón "⬆️ Mejoras" independiente
+- Agregado botón único "🏗️ Gestión" que incluye mejoras + edificios
+- Agregado botón "📊 Estadísticas" separado
+- Botón de menú (☰) redirige a configuración
 
 ---
 
@@ -41,10 +41,10 @@
 ### Pantalla Principal:
 ```
 [💰 coins] [⚡ energy] [🔧 iron] [📊 Stats] [⚙️ Settings]
-                                                        
-                [GRAN ÁREA DE CLIC]                     
-               🎯 +1.5x multiplicador                   
-                                                        
+														
+				[GRAN ÁREA DE CLIC]                     
+			🎯 +1.5x multiplicador                   
+														
 [🏗️ Gestión] [📊 Estadísticas] [📺 Ver Anuncio]
 ```
 
@@ -81,10 +81,10 @@ Pestañas de Mejoras:
 
 ### 3. Sistema de Mejoras Permanentes
 - **9 tipos de mejoras** en 4 categorías:
-  - 💰 **Económicas**: Click Income, Building Income, Global Income
-  - ⚡ **Eficiencia**: Cost Reduction, Production Speed
-  - 🍀 **Críticos**: Critical Chance, Critical Multiplier
-  - 🌟 **Multiplicadores**: Exponential Income, Exponential Cost
+- 💰 **Económicas**: Click Income, Building Income, Global Income
+- ⚡ **Eficiencia**: Cost Reduction, Production Speed
+- 🍀 **Críticos**: Critical Chance, Critical Multiplier
+- 🌟 **Multiplicadores**: Exponential Income, Exponential Cost
 - **Efectos acumulativos** que se aplican al gameplay
 - **Sistema de prerequisitos** para mejoras avanzadas
 

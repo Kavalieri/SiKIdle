@@ -37,13 +37,13 @@ Error actualizando UI de mejoras: <UpgradeType.RESOURCE_EFFICIENCY: 'resource_ef
 **Antes**:
 ```python
 def update_ui(self):
-    """Actualiza la interfaz con los datos actuales."""
+	"""Actualiza la interfaz con los datos actuales."""
 ```
 
 **Después**:
 ```python
 def update_ui(self, dt: float = 0):
-    """Actualiza la interfaz con los datos actuales."""
+	"""Actualiza la interfaz con los datos actuales."""
 ```
 
 **Archivos Corregidos**:
@@ -55,15 +55,15 @@ def update_ui(self, dt: float = 0):
 **Agregado en `src/core/upgrades.py`**:
 ```python
 UpgradeType.RESOURCE_EFFICIENCY: UpgradeInfo(
-    name="Optimización de Recursos",
-    description="Mejora la eficiencia de uso de recursos en 15%",
-    category=UpgradeCategory.EFFICIENCY,
-    upgrade_type=UpgradeType.RESOURCE_EFFICIENCY,
-    base_cost=3000,
-    cost_resource=ResourceType.COINS,
-    effect_value=0.15,
-    max_level=8,
-    emoji="🔄"
+	name="Optimización de Recursos",
+	description="Mejora la eficiencia de uso de recursos en 15%",
+	category=UpgradeCategory.EFFICIENCY,
+	upgrade_type=UpgradeType.RESOURCE_EFFICIENCY,
+	base_cost=3000,
+	cost_resource=ResourceType.COINS,
+	effect_value=0.15,
+	max_level=8,
+	emoji="🔄"
 ),
 ```
 

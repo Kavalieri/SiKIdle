@@ -38,14 +38,14 @@ self.screen_manager = SiKIdleScreenManager()
 ```python
 # Agregado en create_screens()
 for screen in self.screen_manager.screens:
-    if hasattr(screen, 'set_manager_reference'):
-        screen.set_manager_reference(self.screen_manager)
+	if hasattr(screen, 'set_manager_reference'):
+		screen.set_manager_reference(self.screen_manager)
 ```
 
 ### 4. Anotaciones de tipo corregidas
 ```python
 def __init__(self, **kwargs: Any) -> None:
-    self.screen_manager: Optional[SiKIdleScreenManager] = None
+	self.screen_manager: Optional[SiKIdleScreenManager] = None
 ```
 
 ## ✅ Validación de Funcionamiento

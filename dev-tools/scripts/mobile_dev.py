@@ -103,14 +103,14 @@ def main():
 Uso: python mobile_dev.py [comando]
 
 Comandos disponibles:
-  test          - Ejecutar en modo simulación móvil
-  build         - Compilar APK debug para Android  
-  clean         - Limpiar archivos de compilación
-  setup         - Configurar entorno de desarrollo Android
+test          - Ejecutar en modo simulación móvil
+build         - Compilar APK debug para Android  
+clean         - Limpiar archivos de compilación
+setup         - Configurar entorno de desarrollo Android
 
 Ejemplos:
-  python mobile_dev.py test
-  python mobile_dev.py build
+python mobile_dev.py test
+python mobile_dev.py build
 		""")
 		return
 	

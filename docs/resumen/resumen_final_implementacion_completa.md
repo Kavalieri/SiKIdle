@@ -20,39 +20,39 @@ Se ha desarrollado exitosamente un videojuego idle clicker 2D utilizando Python 
 - **Archivo:** `src/utils/db.py`
 - **Estado:** Completamente funcional
 - **Características:**
-  - Tablas: `player`, `upgrades`, `settings`, `stats`
-  - Context managers para manejo seguro de conexiones
-  - Métodos CRUD completos
-  - Sistema de migración y manejo de errores
-  - Auto-creación de tablas al inicio
+- Tablas: `player`, `upgrades`, `settings`, `stats`
+- Context managers para manejo seguro de conexiones
+- Métodos CRUD completos
+- Sistema de migración y manejo de errores
+- Auto-creación de tablas al inicio
 
 #### 2. **Sistema de Guardado Automático**
 - **Archivo:** `src/utils/save.py`
 - **Estado:** Completamente funcional
 - **Características:**
-  - Auto-guardado cada 30 segundos mediante threading
-  - Gestión de estadísticas de jugador
-  - Manejo de niveles de mejoras
-  - Integración con sistema de base de datos
-  - Estadísticas persistentes (clics totales, tiempo jugado, etc.)
+- Auto-guardado cada 30 segundos mediante threading
+- Gestión de estadísticas de jugador
+- Manejo de niveles de mejoras
+- Integración con sistema de base de datos
+- Estadísticas persistentes (clics totales, tiempo jugado, etc.)
 
 #### 3. **Lógica de Juego Principal**
 - **Archivo:** `src/core/game.py`
 - **Estado:** Completamente funcional
 - **Características:**
-  - Sistema de clics con recompensas
-  - Multiplicadores dinámicos basados en mejoras
-  - Bonificaciones por anuncios (preparado para AdMob)
-  - Ingresos pasivos por segundo
-  - Estadísticas en tiempo real
+- Sistema de clics con recompensas
+- Multiplicadores dinámicos basados en mejoras
+- Bonificaciones por anuncios (preparado para AdMob)
+- Ingresos pasivos por segundo
+- Estadísticas en tiempo real
 
 #### 4. **Sistema de Navegación**
 - **Archivo:** `src/ui/screen_manager.py`
 - **Estado:** Completamente funcional
 - **Características:**
-  - Gestión de transiciones entre pantallas
-  - 6 pantallas completamente implementadas
-  - Navegación fluida optimizada para móvil
+- Gestión de transiciones entre pantallas
+- 6 pantallas completamente implementadas
+- Navegación fluida optimizada para móvil
 
 #### 5. **Pantallas de Usuario Implementadas**
 
@@ -93,19 +93,19 @@ Se ha desarrollado exitosamente un videojuego idle clicker 2D utilizando Python 
 - **Archivo:** `src/utils/mobile_config.py`
 - **Estado:** Completamente funcional
 - **Características:**
-  - Configuración OpenGL para desarrollo
-  - Resolución fija 428x926 (móvil)
-  - Orientación portrait bloqueada
-  - Preparado para buildozer
+- Configuración OpenGL para desarrollo
+- Resolución fija 428x926 (móvil)
+- Orientación portrait bloqueada
+- Preparado para buildozer
 
 #### 7. **Aplicación Principal**
 - **Archivo:** `src/main.py`
 - **Estado:** Completamente funcional
 - **Características:**
-  - Integración de todos los sistemas
-  - Inicialización correcta de base de datos
-  - Manejo de excepciones
-  - Logging detallado
+- Integración de todos los sistemas
+- Inicialización correcta de base de datos
+- Manejo de excepciones
+- Logging detallado
 
 ---
 
