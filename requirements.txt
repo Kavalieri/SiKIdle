@@ -1,9 +1,25 @@
-# Dependencias principales para SiKIdle
-kivy>=2.3.0
+# SiKIdle - Dependencias del Proyecto
+# Stack moderno optimizado para desarrollo y distribución
 
-# Herramientas de desarrollo y calidad
+# Framework UI principal
+kivy==2.3.1
+
+# Dependencias de imágenes y multimedia
+Pillow>=10.0.0
+
+# Para Android (solo cuando se compile APK)
+# pyjnius - se instala automáticamente con buildozer
+
+# Base de datos (incluida en Python estándar)
+# sqlite3 - incluida en Python
+
+# Herramientas de desarrollo y calidad (opcional)
 ruff>=0.4.4
 mypy>=1.10.0
+
+# Dependencias de empaquetado (instalar por separado)
+# pyinstaller>=6.0.0  # Para Windows EXE
+# buildozer>=1.5.0    # Para Android APK
 
 # Compilación para Android
 buildozer>=1.5.0

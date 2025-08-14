@@ -1,0 +1,28 @@
+# Archivos generados durante el build
+dist/
+build/
+*.apk
+*.exe
+*.pkg
+*.dmg
+
+# Entornos virtuales
+venv/
+env/
+.venv/
+
+# Cachés de build
+.buildozer/
+__pycache__/
+*.pyc
+*.pyo
+
+# Logs de build
+*.log
+*.txt
+
+# Archivos temporales
+*.tmp
+*.temp
+.DS_Store
+Thumbs.db

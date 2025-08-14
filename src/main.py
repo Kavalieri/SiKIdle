@@ -5,6 +5,8 @@ Archivo principal del juego.
 Inicializa la aplicación Kivy y configura todos los sistemas del juego.
 """
 
+__version__ = "0.1.0"
+
 import logging
 import sys
 from pathlib import Path

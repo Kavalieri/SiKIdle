@@ -11,7 +11,7 @@ from pathlib import Path
 
 def get_user_data_dir() -> Path:
 	"""Obtiene el directorio de datos del usuario según el sistema operativo.
-	
+
 	Returns:
 		Path: Ruta al directorio de datos del usuario
 	"""
@@ -31,7 +31,7 @@ def get_user_data_dir() -> Path:
 
 def get_config_dir() -> Path:
 	"""Obtiene el directorio de configuración.
-	
+
 	Returns:
 		Path: Ruta al directorio de configuración
 	"""
@@ -40,7 +40,7 @@ def get_config_dir() -> Path:
 
 def get_savegames_dir() -> Path:
 	"""Obtiene el directorio de partidas guardadas.
-	
+
 	Returns:
 		Path: Ruta al directorio de savegames
 	"""
@@ -49,7 +49,7 @@ def get_savegames_dir() -> Path:
 
 def get_data_dir() -> Path:
 	"""Obtiene el directorio de datos generados por el usuario.
-	
+
 	Returns:
 		Path: Ruta al directorio de datos
 	"""
@@ -58,7 +58,7 @@ def get_data_dir() -> Path:
 
 def get_logs_dir() -> Path:
 	"""Obtiene el directorio de logs.
-	
+
 	Returns:
 		Path: Ruta al directorio de logs
 	"""
@@ -67,7 +67,7 @@ def get_logs_dir() -> Path:
 
 def get_cache_dir() -> Path:
 	"""Obtiene el directorio de caché.
-	
+
 	Returns:
 		Path: Ruta al directorio de caché
 	"""
@@ -82,7 +82,7 @@ def ensure_directories() -> None:
 		get_savegames_dir(),
 		get_data_dir(),
 		get_logs_dir(),
-		get_cache_dir()
+		get_cache_dir(),
 	]
 
 	for directory in directories:
@@ -91,7 +91,7 @@ def ensure_directories() -> None:
 
 def get_project_root() -> Path:
 	"""Obtiene la ruta raíz del proyecto.
-	
+
 	Returns:
 		Path: Ruta al directorio raíz del proyecto
 	"""
@@ -107,8 +107,21 @@ def get_project_root() -> Path:
 
 def get_assets_dir() -> Path:
 	"""Obtiene el directorio de assets del proyecto.
-	
+
+	Funciona tanto en desarrollo como en Android empaquetado.
+
 	Returns:
 		Path: Ruta al directorio de assets
 	"""
-	return get_project_root() / "src" / "assets"
+	import sys
+
+	# En Android, los assets están en el directorio de la aplicación
+	if hasattr(sys, "_MEIPASS"):
+		# PyInstaller bundle
+		return Path(sys._MEIPASS) / "assets"
+	elif "ANDROID_ARGUMENT" in os.environ:
+		# Android con buildozer/p4a
+		return Path(".") / "assets"
+	else:
+		# Desarrollo normal
+		return get_project_root() / "src" / "assets"

@@ -216,7 +216,16 @@ __marimo__/
 .amazonq/
 .continue/
 tmp/
-releases/
 docs/
 venv_test/
 tests/
+.augment/
+
+# Releases - permitir estructura pero ignorar archivos generados
+releases/packaging/*/dist/
+releases/packaging/*/build/
+releases/packaging/*/venv/
+releases/packaging/*/.buildozer/
+releases/dist/
+*.apk
+*.exe

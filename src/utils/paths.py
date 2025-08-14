@@ -24,7 +24,7 @@ def ensure_directories():
 		base_dir / "savegames",
 		base_dir / "data",
 		base_dir / "logs",
-		base_dir / "cache"
+		base_dir / "cache",
 	]
 
 	for directory in directories:
@@ -32,7 +32,20 @@ def ensure_directories():
 
 
 def get_assets_path():
-	"""Obtiene el directorio de assets del juego."""
-	# Obtener directorio del script actual
-	current_dir = Path(__file__).parent.parent
-	return current_dir / "assets"
+	"""Obtiene el directorio de assets del juego.
+
+	Funciona tanto en desarrollo como en Android empaquetado.
+	"""
+	import sys
+
+	# En Android, los assets están en el directorio de la aplicación
+	if hasattr(sys, "_MEIPASS"):
+		# PyInstaller bundle
+		return Path(sys._MEIPASS) / "assets"
+	elif "ANDROID_ARGUMENT" in os.environ:
+		# Android con buildozer/p4a
+		return Path(".") / "assets"
+	else:
+		# Desarrollo normal
+		current_dir = Path(__file__).parent.parent
+		return current_dir / "assets"
